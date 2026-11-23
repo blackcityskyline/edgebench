@@ -1,0 +1,19 @@
+# PLACEHOLDER costs. Replace with values measured from ask/bid candles or broker statements,
+# then set placeholder: false. Dukascopy symbol ids must be checked against the downloader.
+instruments:
+  EURUSD:
+    {source: dukascopy, symbol: eurusd, tick_size: 0.00001, spread: 0.00008, slippage_spreads: 0.5, placeholder: true}
+  GBPUSD:
+    {source: dukascopy, symbol: gbpusd, tick_size: 0.00001, spread: 0.00012, slippage_spreads: 0.5, placeholder: true}
+  XAUUSD:
+    {source: dukascopy, symbol: xauusd, tick_size: 0.001, spread: 0.35, slippage_spreads: 0.5, placeholder: true}
+  US100:
+    {source: dukascopy, symbol: usatechidxusd, tick_size: 0.001, spread: 1.5, slippage_spreads: 0.5, placeholder: true}
+  BTCUSDT:
+    {source: binance, symbol: BTCUSDT, tick_size: 0.01, spread: 0.1, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+  ETHUSDT:
+    {source: binance, symbol: ETHUSDT, tick_size: 0.01, spread: 0.01, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+  SOLUSDT:
+    {source: binance, symbol: SOLUSDT, tick_size: 0.01, spread: 0.01, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+  TONUSDT:
+    {source: binance, symbol: TONUSDT, tick_size: 0.001, spread: 0.001, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}

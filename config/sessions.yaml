@@ -1,0 +1,9 @@
+# Decision D3: the owner supplies the windows. These are PLACEHOLDERS (confirmed: false).
+tz: America/New_York
+sessions:
+  london:
+    {start: "02:00", end: "08:00", confirmed: false}
+  ny_am:
+    {start: "09:30", end: "12:00", confirmed: false}
+  crypto_evening:
+    {start: "17:00", end: "19:00", confirmed: false}

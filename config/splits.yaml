@@ -1,0 +1,8 @@
+# Dates stay null until data is pulled; the loader then derives them from the data horizon
+# using holdout_fraction (docs/CONTRACT.md section 7.1).
+holdout_fraction: 0.2
+embargo_days: 2
+walk_forward_folds: 4
+dev_start: null
+dev_end: null
+holdout_start: null
