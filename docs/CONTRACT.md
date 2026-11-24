@@ -62,11 +62,11 @@ Deterministic: `zone_id = {instrument}:{kind}:{dir}:{formed_at_iso}`, `event_id 
 
 - **Base resolution is M1**, stored as parquet per instrument and year: `data/parquet/{source}/{symbol}/m1/{year}.parquet` with `ts_open, open, high, low, close, volume`, plus `ask_open..ask_close` for forex when ask candles are downloaded.
 - M3 and H1 are derived by one function `resample(m1, tf)`: label = open time, left-closed, with a completeness flag. A derived bar built from fewer than `min_m1_fraction` of the expected M1 bars is `incomplete`, and zones are never built from incomplete bars. Gaps are never filled with synthetic bars.
-- `data/manifest.json` records per file: sha256, row count, first and last timestamp, source, `price_side`, loader version. `data_version = sha256(manifest)`.
+- `data/manifest.json` records per file: sha256 of the file bytes, `content_sha256` of the canonical frame contents, row count, first and last timestamp, source, `price_side`, loader version. `data_version` is the sha256 of the manifest's *content* fields only (file-byte hashes excluded, so upgrading pyarrow does not change it), optionally limited to the datasets a run uses. Two stricter rules: re-ingesting identical minutes changes nothing, and a minute that differs from the stored one is refused, never overwritten. Valid `price_side` values: `bid`, `ask`, `mid`, `trade` (Binance last-trade prices).
 - Sources (v0): Dukascopy for EURUSD, GBPUSD, XAUUSD and the Nasdaq-100 index CFD (bid and, ideally, ask candles); Binance public archives for BTC, ETH, SOL and TON against USDT. **[DECISION D9]** US100 CFD is the default; NQ futures data is paid and can be added later.
 - Loader pitfalls that need tests: Binance timestamps can be milliseconds or microseconds depending on the file date (detect by magnitude); Dukascopy times are UTC; weekends and holidays are gaps; duplicate rows occur.
 - **Size and horizon.** M1 OHLC for one instrument-year is tens of MB, so the 50 GB budget only matters for ticks. **[DECISION D7]** default horizon: as many years as the sources give, up to 4, at least 12 months. More history is the cheapest way to get statistical power for a heavy-tailed strategy.
-- `data/` is git-ignored. `tests/synthetic.py` generates seeded random-walk M1 bars with injected patterns, so CI and gates never need real data.
+- `/data/` (repository root only) is git-ignored. `edgebench.data.synthetic` (in the package, so tests, gates and later modules can import it) generates seeded random-walk M1 bars and builds hand-made OHLC sequences for fixtures, so CI and gates never need real data. Real downloads and their commands are described in `docs/DATA.md`.
 - Splits (7.1) are applied by the loader, which returns `split=dev` by default.
 
 ## 4. Domain objects and modules
@@ -198,7 +198,8 @@ docs/              this contract and design notes
 config/            strategy_*.yaml, instruments.yaml, sessions.yaml, splits.yaml
 src/edgebench/     contracts, data, zones, patterns, strategy, execution, engine,
                    outcomes, report, evaluator, labels, holdout, pack, runner, cli
-tests/             unit tests, synthetic.py, fixtures/ (protected)
+tests/             unit tests, fixtures/ (protected)
+tools/             download and probe scripts run on the owner's machine
 gates/             gate scripts (protected)
 tasks/             work queue (section 9.2)
 experiments/       queue of configs to run

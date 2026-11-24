@@ -7,7 +7,8 @@ __pycache__/
 .pytest_cache/
 
 # data stays on the owner's disk, never in the public repository
-data/
+# (anchored: src/edgebench/data/ is source code and must stay tracked)
+/data/
 *.parquet
 *.zip
 *.csv.gz
