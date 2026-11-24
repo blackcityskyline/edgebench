@@ -1,0 +1,8 @@
+binance/BTCUSDT: 2103760 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-31T23:59:00+00:00, side ['trade'], no ask
+binance/ETHUSDT: 2103760 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-31T23:59:00+00:00, side ['trade'], no ask
+binance/SOLUSDT: 2103759 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-31T23:59:00+00:00, side ['trade'], no ask
+binance/TONUSDT: 994620 rows, 2024-08-08T10:00:00+00:00 .. 2026-06-30T02:59:00+00:00, side ['trade'], no ask
+dukascopy/eurusd: 1488580 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-30T20:59:00+00:00, side ['bid'], ask
+data_version 85323b459272d9c5
+
+store verified
