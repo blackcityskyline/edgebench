@@ -1,5 +1,5 @@
 # PLACEHOLDER costs. Replace with values measured from ask/bid candles or broker statements,
-# then set placeholder: false. Dukascopy symbol ids must be checked against the downloader.
+# then set placeholder: false. Dukascopy ids were confirmed by the 2026-11-24 download; point sizes for non-forex instruments still need a price check.
 instruments:
   EURUSD:
     {source: dukascopy, symbol: eurusd, tick_size: 0.00001, spread: 0.00008, slippage_spreads: 0.5, placeholder: true}

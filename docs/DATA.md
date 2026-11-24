@@ -27,8 +27,20 @@ edgebench data ingest --source dukascopy --symbol eurusd \
 Notes:
 - Do not pass `-fl` (flats). Flat candles are zero-volume fillers for weekends and holidays; the store keeps real gaps instead.
 - The output timestamp is UTC. The parser accepts an epoch (`timestamp` column) or ISO strings (`time`, `datetime`, `date`). If your version names the column differently, `ingest` fails with the list of columns it found.
-- Instrument ids in `config/instruments.yaml` are placeholders until confirmed: try one day first (`-from 2024-01-02 -to 2024-01-03`) for `xauusd` and for the Nasdaq-100 index (`usatechidxusd`, shown on the site as USATECH.IDX/USD) and fix the id in the config if the tool rejects it. If you pull a different symbol name than the one in `instruments.yaml`, use that name in `--symbol`.
+- Instrument ids confirmed by a real download (2026-11-24 snapshot): `eurusd`, `gbpusd`, `xauusd`, and the Nasdaq-100 index `usatechidxusd` (shown on the site as USATECH.IDX/USD). If you pull a different symbol name than the one in `instruments.yaml`, use that name in `--symbol`.
 - The index is a CFD, not the NQ future (decision D9).
+
+### If `dukascopy-node` is blocked (HTTP 403)
+
+The `jetta.dukascopy.com` endpoint used by `dukascopy-node` is behind a WAF that refuses many hosting and some national networks. `tools/fetch_dukascopy.py` reads the same daily candle archives from `datafeed.dukascopy.com` instead (see `reports/data/2026-11-24/summary.md` for the diagnosis and the check against the JSON API: 0 mismatches):
+
+```
+python tools/fetch_dukascopy.py --symbol EURUSD --from 2022-11-01 --to 2026-11-01 --side both --dir data/raw/dukascopy --workers 3
+edgebench data ingest --source dukascopy --symbol eurusd \
+  --files data/raw/dukascopy/eurusd-bid/m1.csv --ask-files data/raw/dukascopy/eurusd-ask/m1.csv
+```
+
+Prices in these archives are integers scaled by a per-instrument point size (`--point`, default 1e-5 for EURUSD). Before trusting a new instrument, compare a few ingested prices with a chart (gold and the index use a different scale than a 5-digit forex pair). `datafeed` is an undocumented path and may change; keep the downloaded raw files.
 
 Ask candles let the engine use a real spread. Without them the fixed placeholder spread from `config/instruments.yaml` applies, which is optimistic around news and at rollover.
 
