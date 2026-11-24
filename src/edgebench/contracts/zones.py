@@ -72,9 +72,15 @@ class Zone:
 
 @dataclass(frozen=True, slots=True)
 class ZoneEvent:
+    """A zone lifecycle event, stamped with the close of the M1 bar that caused it.
+
+    ``episode_index`` is set for touch events (0 for the first touch episode of the zone).
+    """
+
     zone_id: str
     ts: datetime
     type: ZoneEventType
+    episode_index: int | None = None
 
     def __post_init__(self) -> None:
         require_utc(self.ts, "ts")

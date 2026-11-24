@@ -77,7 +77,7 @@ Package `edgebench.contracts`, frozen dataclasses. Changes require the architect
 
 - **Bar**: `ts_open, open, high, low, close, volume, tf, complete`
 - **Zone**: `zone_id, instrument, kind (FVG|FRACTAL), direction (BULL|BEAR), low, high, extreme_ts, formed_at, known_at, params_hash`. BULL = support, long bias. For FRACTAL, `low == high` is the level.
-- **ZoneEvent**: `zone_id, ts, type (CREATED|TOUCH_START|TOUCH_END|MITIGATED|INVALIDATED|EXPIRED)`
+- **ZoneEvent**: `zone_id, ts, type (CREATED|TOUCH_START|TOUCH_END|MITIGATED|INVALIDATED|EXPIRED), episode_index`. `ts` is the close of the M1 bar that caused the event. `episode_index` is set on touch events (0 = first episode of the zone).
 - **Observation**: `detector, ts_decision, direction, refs, metrics` (for example sweep depth in ATR)
 - **Event** (one row per touch episode): `event_id, zone_id, instrument, direction, touch_start, session, features, observations`. Features include zone age, zone size in `atr_h1`, distance to the nearest opposite liquidity. An episode can contain several decision times, so the decision time lives on the candidate, not the event.
 - **OrderIntent** (a candidate trade, the unit for the evaluator and for labels): `candidate_id, event_id, trigger, ts_decision, direction, entry_policy, entry_ref, stop_price`
@@ -96,7 +96,8 @@ Streaming interface: `ZoneDetector.on_bar(h1_bar) -> list[Zone]`, stateful, clos
 - **No pattern across a hole.** A zone detector's window holds only consecutive complete bars (`BarWindow`). A time gap (weekend, outage) or an incomplete bar empties it, so a gap or fractal is never formed across missing data. Zones are not emitted while the ATR is still warming up (14 H1 bars), because the size filter cannot be evaluated.
 - **Fractal level.** Pivot high/low with `left` bars on the left and `right` bars on the right. **[DECISION D1]** default 2/2 (Williams); 1/1 is the 3-bar swing. `extreme_ts` is the open of the pivot bar, `formed_at` is the close of the pivot bar, and **`known_at` is the close of the `right`-th bar after the pivot.** Using the level before `known_at` is look-ahead and the most common bug in this kind of backtest. BULL fractal = pivot low (liquidity below), BEAR fractal = pivot high.
 - **ZoneBook.** `ZoneBook.on_m1(bar) -> list[ZoneEvent]` tracks the lifecycle. A *touch* is an M1 bar with `ts_open >= known_at` whose range overlaps the zone (fractal: range reaches the level). A touch *episode* starts at the first such bar and ends after `episode_gap_bars` consecutive M1 bars outside the zone.
-- **[DECISION D2]** invalidation: `invalid_on in {close_through, full_fill, first_touch, never}`, default `close_through`. `max_episodes` default 1. `max_age_h1_bars` default 200.
+  Events are stamped with the close of the M1 bar. When a zone is retired during an active episode, `TOUCH_END` is emitted first. Expiry is measured from `known_at` to the bar close. After `max_episodes` finished episodes the zone is `MITIGATED`.
+- **[DECISION D2]** invalidation: `invalid_on in {close_through, full_fill, first_touch, never}`, default `close_through`. Checked on every M1 bar, also without a touch. For a BULL zone (BEAR mirrored): `close_through` = an M1 close below the zone low (a wick through the zone that closes back inside is a sweep, not an invalidation); `full_fill` = a bar low reaches the zone low; `first_touch` = the zone is spent as soon as its first episode ends; `never` = no invalidation. `max_episodes` default 1, `max_age_h1_bars` default 200. FVG and fractal have separate settings of the same shape (`zones.fvg.*`, `zones.fractal.*`).
 
 ### 4.4 Patterns (`edgebench.patterns`)
 
@@ -146,7 +147,8 @@ sessions: [london, ny_am, crypto_evening]      # names from config/sessions.yaml
 zones:
   fvg: {enabled: true, min_size_atr_h1: 0.2, min_displacement_body_atr_h1: null,
         invalid_on: close_through, max_episodes: 1, max_age_h1_bars: 200}
-  fractal: {enabled: true, left: 2, right: 2}
+  fractal: {enabled: true, left: 2, right: 2,
+            invalid_on: close_through, max_episodes: 1, max_age_h1_bars: 200}
   episode_gap_bars: 5
   window_bars: 30
 patterns:

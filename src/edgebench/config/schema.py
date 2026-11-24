@@ -48,6 +48,9 @@ class FractalConfig(_Base):
     enabled: bool = True
     left: int = Field(2, ge=1, description="Bars on the left of the pivot (decision D1)")
     right: int = Field(2, ge=1, description="Bars on the right; the level is known after them")
+    invalid_on: InvalidOn = Field("close_through", description="Decision D2, as for FVG")
+    max_episodes: int = Field(1, ge=1, description="Touch episodes per level")
+    max_age_h1_bars: int = Field(200, ge=1, description="Level expires after this many H1 bars")
 
 
 class ZonesConfig(_Base):
