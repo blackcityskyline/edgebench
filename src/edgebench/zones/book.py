@@ -21,7 +21,7 @@ When a zone is retired while an episode is active, TOUCH_END is emitted first.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from edgebench.config.schema import FractalConfig, FvgConfig
 from edgebench.contracts import Bar, Direction, Zone, ZoneEvent, ZoneEventType, ZoneKind
@@ -72,54 +72,54 @@ class ZoneBook:
         if bar.tf != "M1":
             raise ValueError(f"ZoneBook needs M1 bars, got {bar.tf}")
         events: list[ZoneEvent] = []
+        ts_open, ts_close = bar.ts_open, bar.ts_close
         for zone_id in list(self._states):
             state = self._states[zone_id]
-            if bar.ts_open < state.zone.known_at:
+            if ts_open < state.zone.known_at:
                 continue
-            retired = self._step(state, bar, events)
-            if retired:
+            if self._step(state, bar, ts_close, events):
                 del self._states[zone_id]
         return events
 
     # -- internals -----------------------------------------------------------------------
 
-    def _step(self, state: _State, bar: Bar, events: list[ZoneEvent]) -> bool:
-        zone, ts = state.zone, bar.ts_close
-
-        def emit(kind: ZoneEventType, episode: int | None = None) -> None:
-            events.append(ZoneEvent(zone.zone_id, ts, kind, episode))
-
-        def end_episode() -> None:
-            if state.active:
-                emit(ZoneEventType.TOUCH_END, state.episodes_done)
-                state.active = False
-                state.episodes_done += 1
-
+    def _step(self, state: _State, bar: Bar, ts: datetime, events: list[ZoneEvent]) -> bool:
+        zone = state.zone
         if ts - zone.known_at >= state.max_age:
-            end_episode()
-            emit(ZoneEventType.EXPIRED)
+            self._end_episode(state, ts, events)
+            events.append(ZoneEvent(zone.zone_id, ts, ZoneEventType.EXPIRED))
             return True
 
-        touching = bar.low <= zone.high and bar.high >= zone.low
-        if touching:
+        if bar.low <= zone.high and bar.high >= zone.low:  # touching
             state.outside_bars = 0
             if not state.active and state.episodes_done < state.max_episodes:
                 state.active = True
-                emit(ZoneEventType.TOUCH_START, state.episodes_done)
+                events.append(
+                    ZoneEvent(zone.zone_id, ts, ZoneEventType.TOUCH_START, state.episodes_done)
+                )
         elif state.active:
             state.outside_bars += 1
             if state.outside_bars >= self._gap:
-                end_episode()
+                self._end_episode(state, ts, events)
                 state.outside_bars = 0
 
         if self._invalidated(state, bar):
-            end_episode()
-            emit(ZoneEventType.INVALIDATED)
+            self._end_episode(state, ts, events)
+            events.append(ZoneEvent(zone.zone_id, ts, ZoneEventType.INVALIDATED))
             return True
         if state.episodes_done >= state.max_episodes and not state.active:
-            emit(ZoneEventType.MITIGATED)
+            events.append(ZoneEvent(zone.zone_id, ts, ZoneEventType.MITIGATED))
             return True
         return False
+
+    @staticmethod
+    def _end_episode(state: _State, ts: datetime, events: list[ZoneEvent]) -> None:
+        if state.active:
+            events.append(
+                ZoneEvent(state.zone.zone_id, ts, ZoneEventType.TOUCH_END, state.episodes_done)
+            )
+            state.active = False
+            state.episodes_done += 1
 
     @staticmethod
     def _invalidated(state: _State, bar: Bar) -> bool:

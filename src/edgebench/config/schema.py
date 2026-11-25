@@ -123,6 +123,9 @@ class EntryConfig(_Base):
 class ExitsConfig(_Base):
     max_hold_minutes: int = Field(360, ge=1, description="Decision D4")
     ladder_r: list[float] = Field(default_factory=_default_ladder, min_length=1)
+    reference_r: float = Field(
+        2.0, gt=0, description="Fixed-R target of the reference exit stored on every trade"
+    )
 
     @field_validator("ladder_r")
     @classmethod
@@ -132,6 +135,12 @@ class ExitsConfig(_Base):
         if any(b <= a for a, b in zip(value, value[1:], strict=False)):
             raise ValueError("ladder_r must be strictly ascending")
         return value
+
+    @model_validator(mode="after")
+    def _reference_on_ladder(self) -> ExitsConfig:
+        if self.reference_r not in self.ladder_r:
+            raise ValueError("reference_r must be one of ladder_r")
+        return self
 
 
 class RiskConfig(_Base):
