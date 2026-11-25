@@ -12,6 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from edgebench.chart import AFTER, BEFORE, render_candidate, visible_bars
 from edgebench.config import ConfigError, load_all, unconfirmed_items
 from edgebench.config.schema import StrategyConfig
 from edgebench.contracts import make_run_id
@@ -19,12 +20,12 @@ from edgebench.data.errors import DataError
 from edgebench.data.holdout import HoldoutDenied
 from edgebench.data.loader import HoldoutRequest, iter_bars, load_m1
 from edgebench.data.splits import SplitBounds, derive_bounds
-from edgebench.data.store import data_version, load_manifest
+from edgebench.data.store import data_version, load_manifest, read_raw_m1
 from edgebench.data_cli import data_root
 from edgebench.engine import run_engine
 from edgebench.execution import CostModel
 from edgebench.report import RunMeta, build_report
-from edgebench.results import candidate_frame, event_frame
+from edgebench.results import candidate_frame, event_frame, observation_frame
 
 RepoRoot = Callable[[], Path]
 
@@ -90,6 +91,7 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
     ledger = repo / "runs" / "ledger.jsonl"
     frames: dict[str, pd.DataFrame] = {}
     event_frames: list[pd.DataFrame] = []
+    obs_frames: list[pd.DataFrame] = []
     counts: dict[str, dict[str, int]] = {}
     for name in instruments:
         spec = config.instruments.instruments[name]
@@ -111,6 +113,7 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
         out = run_engine(strategy, name, iter_bars(frame, "M1"), costs, config.sessions)
         frames[name] = candidate_frame(out, name, strategy.exits.ladder_r)
         event_frames.append(event_frame(out, name))
+        obs_frames.append(observation_frame(out, name))
         counts[name] = out.counts
         print(
             f"  events {len(out.events)}, candidates {len(out.candidates)}, "
@@ -128,6 +131,7 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
     tables.mkdir(parents=True, exist_ok=True)
     pd.concat(frames.values(), ignore_index=True).to_parquet(tables / "candidates.parquet")
     pd.concat(event_frames, ignore_index=True).to_parquet(tables / "events.parquet")
+    pd.concat(obs_frames, ignore_index=True).to_parquet(tables / "observations.parquet")
     if args.split == "holdout":
         print(report)  # holdout results are never written where agents read (contract 7.2)
         return 0
@@ -150,6 +154,49 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
     return 0
 
 
+def _find_run(root: Path, prefix: str) -> Path:
+    runs = root / "runs"
+    found = sorted(p for p in runs.iterdir() if p.name.startswith(prefix)) if runs.is_dir() else []
+    if len(found) != 1:
+        raise DataError(f"run {prefix!r}: {len(found)} matches under {runs}")
+    return found[0]
+
+
+def _cmd_chart(args: argparse.Namespace, repo_root: RepoRoot) -> int:
+    repo = repo_root()
+    root = data_root(repo)
+    config = load_all(repo / "config")
+    run_dir = _find_run(root, args.run)
+    cands = pd.read_parquet(run_dir / "candidates.parquet")
+    obs = pd.read_parquet(run_dir / "observations.parquet")
+    if args.candidate:
+        cands = cands[cands["candidate_id"] == args.candidate]
+    if args.instrument:
+        cands = cands[cands["instrument"] == args.instrument]
+    if args.trigger:
+        cands = cands[cands["trigger"] == args.trigger]
+    if args.side:
+        cands = cands[cands["side"] == args.side.upper()]
+    if cands.empty:
+        raise DataError("no candidates match the filters")
+    if not args.candidate and len(cands) > args.sample:
+        cands = cands.sample(n=args.sample, random_state=args.seed)
+    out_dir = Path(args.out) if args.out else root / "charts" / run_dir.name
+    for _, cand in cands.sort_values("ts_decision").iterrows():
+        spec = config.instruments.instruments[cand["instrument"]]
+        touch = pd.Timestamp(cand["touch_start"])
+        decision = pd.Timestamp(cand["ts_decision"])
+        m1 = read_raw_m1(
+            root, spec.source, spec.symbol, touch - BEFORE - pd.Timedelta(days=1), decision + AFTER
+        )
+        bars = visible_bars(m1, touch, decision, args.blind)
+        mine = obs[obs["event_id"] == cand["event_id"]]
+        safe = str(cand["candidate_id"]).replace(":", "_").replace("#", "-")
+        path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+        print(path)
+    return 0
+
+
 def register(sub: argparse._SubParsersAction[argparse.ArgumentParser], repo_root: RepoRoot) -> None:
     run = sub.add_parser("run", help="run a strategy on stored data and write a report")
     run.add_argument("--strategy", default="strategy_v1")
@@ -168,3 +215,23 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser], repo_root
             return 1
 
     run.set_defaults(func=go)
+
+    chart = sub.add_parser("chart", help="draw candidates of a run (needs matplotlib)")
+    chart.add_argument("--run", required=True, help="run id or unique prefix")
+    chart.add_argument("--candidate", help="one candidate id")
+    chart.add_argument("--instrument")
+    chart.add_argument("--trigger")
+    chart.add_argument("--side", choices=["long", "short", "LONG", "SHORT"])
+    chart.add_argument("--sample", type=int, default=6, help="random candidates to draw")
+    chart.add_argument("--seed", type=int, default=0)
+    chart.add_argument("--blind", action="store_true", help="only what was known at the decision")
+    chart.add_argument("--out", help="output folder (default data/charts/<run>)")
+
+    def draw(args: argparse.Namespace) -> int:
+        try:
+            return _cmd_chart(args, repo_root)
+        except (DataError, ConfigError, OSError, ValueError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
+
+    chart.set_defaults(func=draw)

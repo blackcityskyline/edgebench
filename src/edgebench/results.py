@@ -34,8 +34,20 @@ def _zone_parts(zone_id: str) -> tuple[str, str]:
     return parts[1], parts[2]
 
 
+def _zone_columns(out: RunOutput, zone_id: str) -> dict[str, object]:
+    zone = next((z for z in out.zones if z.zone_id == zone_id), None)
+    if zone is None:
+        return {}
+    return {
+        "zone_low": zone.low,
+        "zone_high": zone.high,
+        "zone_known_at": pd.Timestamp(zone.known_at),
+    }
+
+
 def candidate_frame(out: RunOutput, instrument: str, ladder_r: list[float]) -> pd.DataFrame:
     events = {e.event_id: e for e in out.events}
+    zones = {z.zone_id: z for z in out.zones}
     trades = {t.trade_id: t for t in out.trades}
     rows: list[dict[str, object]] = []
     for cand in out.candidates:
@@ -55,6 +67,12 @@ def candidate_frame(out: RunOutput, instrument: str, ladder_r: list[float]) -> p
             "zone_kind": kind,
             "zone_dir": direction,
             "traded": trade is not None,
+            "entry_ref": cand.entry_ref,
+            "stop_price": cand.stop_price,
+            "zone_low": zones[event.zone_id].low,
+            "zone_high": zones[event.zone_id].high,
+            "zone_known_at": pd.Timestamp(zones[event.zone_id].known_at),
+            "touch_start": pd.Timestamp(event.touch_start),
         }
         for name in FEATURES:
             row[name] = event.features.get(name, float("nan"))
@@ -94,6 +112,7 @@ def event_frame(out: RunOutput, instrument: str) -> pd.DataFrame:
             "touch_start": pd.Timestamp(e.touch_start),
             "session": e.session,
             "n_candidates": counts.get(e.event_id, 0),
+            **_zone_columns(out, e.zone_id),
         }
         for name in FEATURES:
             row[name] = e.features.get(name, float("nan"))
@@ -101,4 +120,22 @@ def event_frame(out: RunOutput, instrument: str) -> pd.DataFrame:
             key = f"obs_{obs.detector}"
             row[key] = int(row.get(key, 0)) + 1  # type: ignore[call-overload]
         rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def observation_frame(out: RunOutput, instrument: str) -> pd.DataFrame:
+    """One row per pattern observation, for charts and for checking detectors by eye."""
+    rows = [
+        {
+            "event_id": e.event_id,
+            "instrument": instrument,
+            "detector": o.detector,
+            "ts_decision": pd.Timestamp(o.ts_decision),
+            "direction": o.direction.value,
+            **{f"ref_{k}": v for k, v in o.refs.items()},
+            **{f"m_{k}": v for k, v in o.metrics.items()},
+        }
+        for e in out.events
+        for o in e.observations
+    ]
     return pd.DataFrame(rows)

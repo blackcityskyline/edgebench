@@ -27,3 +27,16 @@ The result is printed only and is never written to `runs/` (contract 7.2). Use i
 
 Current limits: only the `market_next_open` entry policy; fixed spread per instrument from
 `config/instruments.yaml` (placeholders) even where ask candles exist; sessions apply to all instruments.
+
+## Looking at candidates
+
+```bash
+pip install -e '.[viz]'
+edgebench chart --run <run_id_prefix> --trigger rejection --instrument EURUSD --sample 8
+edgebench chart --run <run_id_prefix> --candidate '<candidate_id>' --blind
+```
+
+PNG files go to `data/charts/<run_id>/`. A normal chart shows the H1 zone, the decision moment, the
+pattern markers, the stop, the fill and the 1R/2R/3R levels. `--blind` shows only what was known at the
+decision (bars closed by then, no outcome), the view used for labeling. Use it to check by eye that the
+detectors mark what you would mark; disagreements are the most useful input for tuning the definitions.
