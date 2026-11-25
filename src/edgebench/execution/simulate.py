@@ -134,6 +134,12 @@ class TradeSim:
         gross = (exit_fill - self.entry_fill) * self.side.sign / self.risk
         spread_r = self._costs.spread / self.risk
         slip_r = self._costs.slippage / self.risk if reason is ExitReason.STOP else 0.0
+        stop_r = timeout_r = None
+        if self._stop_fill is not None:
+            stop_r = (self._stop_fill - self.entry_fill) * self.side.sign / self.risk - commission
+        if self._timeout_fill is not None:
+            timeout_r = (self._timeout_fill - self.entry_fill) * self.side.sign / self.risk
+            timeout_r -= commission
         ladder: dict[str, datetime | None] = {"stop": self._stop_ts}
         for r in self._ladder_r:
             ladder[rung_key(r)] = self._reached.get(r)
@@ -153,5 +159,8 @@ class TradeSim:
             ambiguous_bars=self._ambiguous,
             cost_r=spread_r + slip_r + commission,
             ladder=ladder,
+            commission_r=commission,
+            stop_r=stop_r,
+            timeout_r=timeout_r,
         )
         return self.trade

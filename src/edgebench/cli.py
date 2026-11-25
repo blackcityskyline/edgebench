@@ -10,6 +10,7 @@ from pathlib import Path
 
 from edgebench.config import ConfigError, load_all, unconfirmed_items
 from edgebench.data_cli import register as register_data
+from edgebench.run_cli import register as register_run
 from edgebench.runner.loop import run_loop
 from edgebench.runner.tasks import TaskError, load_tasks
 
@@ -87,6 +88,7 @@ def build_parser() -> argparse.ArgumentParser:
     check.set_defaults(func=_cmd_config_check)
 
     register_data(sub, repo_root)
+    register_run(sub, repo_root)
     return parser
 
 

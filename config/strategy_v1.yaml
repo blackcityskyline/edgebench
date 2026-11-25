@@ -38,9 +38,13 @@ patterns:
     enabled: true
     mode: range
     min_count: 1
+  baseline:            # control: a random bar in the episode window, same stop rule
+    enabled: true
+    probability: 0.1
+    seed: 0
 
 entry:
-  triggers: [sweep, rejection, stall, inside]
+  triggers: [sweep, rejection, stall, inside, baseline]
   combine: first
   policy: market_next_open
   limit_retrace_frac: 0.5
@@ -54,6 +58,7 @@ entry:
 exits:
   max_hold_minutes: 360
   ladder_r: [1, 2, 3, 5, 8, 10, 15]
+  reference_r: 2
 
 risk:
   risk_pct: 0.2

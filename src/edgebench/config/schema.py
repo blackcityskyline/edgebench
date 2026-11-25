@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-TriggerName = Literal["sweep", "rejection", "stall", "inside"]
+TriggerName = Literal["sweep", "rejection", "stall", "inside", "baseline"]
 SweepReference = Literal["zone_edge", "h1_fractal", "ltf_fractal_m1", "ltf_fractal_m3"]
 InvalidOn = Literal["close_through", "full_fill", "first_touch", "never"]
 
@@ -88,11 +88,20 @@ class InsideConfig(_Base):
     min_count: int = Field(1, ge=1)
 
 
+class BaselineConfig(_Base):
+    """A pattern-free control: a random bar inside the episode window is the 'trigger'."""
+
+    enabled: bool = False
+    probability: float = Field(0.1, gt=0, le=1, description="Per bar inside the window")
+    seed: int = 0
+
+
 class PatternsConfig(_Base):
     sweep: SweepConfig = SweepConfig()
     stall: StallConfig = StallConfig()
     rejection: RejectionConfig = RejectionConfig()
     inside: InsideConfig = InsideConfig()
+    baseline: BaselineConfig = BaselineConfig()
 
 
 class StopBufferConfig(_Base):

@@ -278,3 +278,25 @@ def test_context_validation() -> None:
         PatternContext(zone(), 0, T0, 1.0, ())
     with pytest.raises(ValueError, match="atr"):
         PatternContext(zone(), 0, T0, 0.0, tuple(seq))
+
+
+# -- baseline ----------------------------------------------------------------------------------
+
+
+def test_baseline_is_deterministic_and_close_to_its_probability() -> None:
+    from edgebench.config.schema import BaselineConfig
+    from edgebench.patterns import BaselineDetector
+
+    rows: list[Row] = [(101.0, 101.5, 100.5, 101.2)] * 2000
+    always = run(BaselineDetector(BaselineConfig(enabled=True, probability=1.0)), rows[:5])
+    assert len(always) == 5 and always[0][1].refs["extreme"] == 100.5
+    a = run(BaselineDetector(BaselineConfig(enabled=True, probability=0.1)), rows)
+    b = run(BaselineDetector(BaselineConfig(enabled=True, probability=0.1)), rows)
+    assert [i for i, _ in a] == [i for i, _ in b]
+    assert 0.07 < len(a) / 2000 < 0.13
+    other = run(BaselineDetector(BaselineConfig(enabled=True, probability=0.1, seed=1)), rows)
+    assert [i for i, _ in other] != [i for i, _ in a]
+    bear = run(
+        BaselineDetector(BaselineConfig(enabled=True, probability=1.0)), rows[:1], Direction.BEAR
+    )
+    assert bear[0][1].refs["extreme"] == 101.5

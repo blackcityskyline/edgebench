@@ -177,3 +177,23 @@ def test_entry_beyond_the_stop_is_rejected_and_rung_keys_are_compact() -> None:
     with pytest.raises(ValueError, match="stop"):
         sim(stop=100.5)
     assert [rung_key(r) for r in (1, 2.5, 10)] == ["1", "2.5", "10"]
+
+
+def test_stop_and_timeout_returns_are_stored_for_other_exit_policies() -> None:
+    stopped = sim()
+    stopped.update(bar(0, 100.0, 100.5, 99.5, 100.3))
+    trade = stopped.update(bar(1, 100.0, 100.2, 99.0, 99.4))
+    assert trade is not None and trade.stop_r == pytest.approx(-1.1) and trade.timeout_r is None
+
+    timed = sim(max_hold=3)
+    for i in range(3):
+        timed.update(bar(i, 100.2, 100.6, 99.8, 100.4))
+    trade = timed.update(bar(3, 100.4, 100.5, 100.3, 100.4))
+    assert trade is not None and trade.timeout_r == pytest.approx(0.2) and trade.stop_r is None
+
+    both = sim()
+    both.update(bar(0, 100.0, 100.5, 99.5, 100.3))
+    both.update(bar(1, 100.3, 102.5, 100.0, 102.0))  # rung 1 and 2: the reference target
+    trade = both.update(bar(2, 102.0, 102.1, 99.0, 99.5))  # then the stop, after the target
+    assert trade is not None and trade.exit_reason is ExitReason.TARGET
+    assert trade.r_net == pytest.approx(2.0) and trade.stop_r == pytest.approx(-1.1)

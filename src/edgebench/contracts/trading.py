@@ -50,7 +50,9 @@ class Trade:
     """An executed candidate. ``trade_id`` equals the candidate's ``candidate_id``.
 
     ``ladder`` maps ``"stop"`` and each target level in R (``"1"``, ``"2"``, ...) to the time it
-    was first reached, or None. ``r_net`` is net of spread, slippage and commission.
+    was first reached, or None. ``r_net`` is net of spread, slippage and commission and belongs to
+    the reference exit. ``stop_r`` and ``timeout_r`` hold the net R of the other two outcomes, so
+    any fixed-R policy can be computed from the ladder (``edgebench.results.fixed_r``).
     """
 
     trade_id: str
@@ -68,6 +70,9 @@ class Trade:
     ambiguous_bars: int
     cost_r: float
     ladder: dict[str, datetime | None] = field(default_factory=dict)
+    commission_r: float = 0.0
+    stop_r: float | None = None  # net R if the simulation ended at the stop, else None
+    timeout_r: float | None = None  # net R at the timeout, set only when the simulation timed out
 
     def __post_init__(self) -> None:
         require_utc(self.entry_ts, "entry_ts")
