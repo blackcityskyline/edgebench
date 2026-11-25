@@ -101,14 +101,14 @@ Streaming interface: `ZoneDetector.on_bar(h1_bar) -> list[Zone]`, stateful, clos
 
 ### 4.4 Patterns (`edgebench.patterns`)
 
-Each detector: `on_bar(bar, ctx) -> list[Observation]`. It runs only while an episode is active (from touch start until `window_bars` later). Observations are non-exclusive: one bar can fire several detectors. An observation is available at the close of the bar that completes it.
+Each detector: `on_bar(bar, ctx) -> list[Observation]` with `ctx: PatternContext` (zone, episode index, `touch_start`, `atr_m1` known before the bar, `history` = closed M1 bars up to and including the current one, `m3_history` = complete M3 bars closed by now, `h1_levels` = known H1 fractal levels on the sweep side, `bars_since_touch`). `PatternSet` runs the enabled detectors and returns nothing once `bars_since_touch > window_bars`. Observations are non-exclusive: one bar can fire several detectors. An observation is stamped with the close of the bar that completes it, and its direction is the zone's reaction direction (BULL zone = long). Detectors are stateful per episode (`reset()` between episodes). All examples below are for a BULL zone; BEAR mirrors highs and lows.
 
-- **Sweep.** Price trades beyond a reference level, then a bar closes back inside within `max_return_bars`. Reference set is configurable: `zone_edge`, `h1_fractal`, `ltf_fractal_m1`, `ltf_fractal_m3`. LTF fractals obey the same `known_at` rule. Params: `min_depth_atr_m1`, `max_return_bars`.
-- **Stall.** `n_bars` consecutive bars with `range <= max_range_atr_m1` and no new extreme beyond `max_extension_atr_m1`.
-- **Rejection wick.** Wick/range >= `min_wick_ratio` on the side facing the zone's reaction direction, close within the far `close_zone` fraction of the range.
-- **Inside-like.** Bar range (or body) inside the previous bar's range (or body), per `mode`, optionally requiring `min_count` bars.
+- **Sweep.** A bar that opens at or above a reference level and trades below it by at least `min_depth_atr_m1 * ATR`, followed by a bar whose close is back at or above the level. The returning bar may be the piercing bar itself or come at most `max_return_bars - 1` bars later (`return_bars` counts the piercing bar as 1). A level is consumed by its first pierce, so it is swept at most once per episode. References (`references`): `zone_edge` (zone low), `h1_fractal` (levels from `ctx.h1_levels`), `ltf_fractal_m1` and `ltf_fractal_m3` (2/2 pivot lows among closed bars, confirmed by their right-hand bars, not yet traded through). Observation: `refs{level, extreme}`, `metrics{depth_atr, return_bars}`.
+- **Stall.** At bar `i` the condition holds if each of the last `n_bars` bars has `range <= max_range_atr_m1 * ATR` and the lowest low of that block is not below the low of the bar before the block by more than `max_extension_atr_m1 * ATR`. It fires on the bar where the condition becomes true (edge-triggered, once per stall). Observation: `refs{extreme}`, `metrics{block_range_atr}`.
+- **Rejection wick.** The bar reaches the zone (`low <= zone.high`), lower wick `(min(open, close) - low) / range >= min_wick_ratio`, and `(close - low) / range >= 1 - close_zone`. Zero-range bars never fire. Observation: `refs{extreme}`, `metrics{wick_ratio, close_pos, range_atr}`.
+- **Inside-like.** `min_count` consecutive bars each contained in the previous bar (`mode`: high-low range or open-close body; equal edges count as inside). Fires when the chain length reaches exactly `min_count`. Observation: `refs{mother_high, mother_low}`, `metrics{size_ratio}`.
 
-Fixtures: `tests/fixtures/patterns/*.json`, hand-built bar sequences with expected observations. The owner's real examples are added here later.
+Tests: `tests/test_patterns.py` with hand-built bars and known answers. The owner's real examples are added as JSON fixtures in `tests/fixtures/patterns/` later and become regression tests.
 
 ### 4.5 Strategy and execution
 
