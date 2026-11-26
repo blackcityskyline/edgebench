@@ -1,0 +1,12 @@
+EURUSD: loading dukascopy/eurusd (dev)
+  events 6435, candidates 52, trades 52
+BTCUSDT: loading binance/BTCUSDT (dev)
+  events 9718, candidates 6685, trades 6685
+ETHUSDT: loading binance/ETHUSDT (dev)
+  events 9836, candidates 7161, trades 7161
+SOLUSDT: loading binance/SOLUSDT (dev)
+  events 9321, candidates 4649, trades 4649
+TONUSDT: loading binance/TONUSDT (dev)
+  events 4082, candidates 568, trades 568
+report: <repo>/runs/3b82c28e0c72b068/report.md
+tables: <repo>/data/runs/3b82c28e0c72b068

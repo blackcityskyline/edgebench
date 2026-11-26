@@ -1,5 +1,5 @@
 {
-  "current": "full",
+  "current": "cost2",
   "started": "2026-11-26T10:00:42+00:00",
   "state": "running",
   "steps": {
@@ -7,6 +7,12 @@
       "at": "2026-11-26T10:01:15+00:00",
       "returncode": 0,
       "seconds": 2.0,
+      "status": "ok"
+    },
+    "cost2": {
+      "at": "2026-11-26T10:38:25+00:00",
+      "returncode": 0,
+      "seconds": 1158.7,
       "status": "ok"
     },
     "data_info": {
@@ -23,6 +29,7 @@
     },
     "full": {
       "at": "2026-11-26T10:19:04+00:00",
+      "git": "pushed",
       "returncode": 0,
       "seconds": 1060.8,
       "status": "ok"
@@ -58,5 +65,5 @@
       "status": "ok"
     }
   },
-  "updated": "2026-11-26T10:19:04+00:00"
+  "updated": "2026-11-26T10:38:25+00:00"
 }
