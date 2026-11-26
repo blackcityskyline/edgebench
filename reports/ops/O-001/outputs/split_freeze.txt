@@ -1,0 +1,5 @@
+horizon  2022-11-01 00:00:00+00:00 .. 2026-11-01 00:00:00+00:00
+dev      2022-11-01 .. 2026-01-10 (exclusive)
+embargo  2 days
+holdout  from 2026-01-12 (derived)
+written <repo>/config/splits.yaml; commit it so the boundary stays fixed

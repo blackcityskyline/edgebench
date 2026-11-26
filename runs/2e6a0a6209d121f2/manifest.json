@@ -1,0 +1,84 @@
+{
+  "code_commit": "7d21e9e-dirty",
+  "config_hash": "acf8cb35b0497e7abae7a34e5922b1471f30ee3dbf7bfd54c2fa8a5eb71bb38d",
+  "cost_mult": 1.0,
+  "counts": {
+    "BTCUSDT": {
+      "cancelled_pending": 0,
+      "candidates": 6704,
+      "events": 9718,
+      "gap_resets": 1,
+      "m1_bars": 1678960,
+      "skip_session": 22906,
+      "skip_stop_too_tight": 848,
+      "skip_stop_too_wide": 576,
+      "trades_opened": 6704,
+      "zones_fractal": 7846,
+      "zones_fvg": 2850
+    },
+    "ETHUSDT": {
+      "cancelled_pending": 0,
+      "candidates": 7195,
+      "events": 9836,
+      "gap_resets": 1,
+      "m1_bars": 1678960,
+      "skip_session": 24957,
+      "skip_stop_too_tight": 633,
+      "skip_stop_too_wide": 744,
+      "trades_opened": 7195,
+      "zones_fractal": 7923,
+      "zones_fvg": 2908
+    },
+    "EURUSD": {
+      "cancelled_pending": 0,
+      "candidates": 817,
+      "events": 6435,
+      "gap_resets": 265,
+      "m1_bars": 1187434,
+      "no_fill_gap": 3,
+      "skip_session": 15742,
+      "skip_stop_too_tight": 12537,
+      "skip_stop_too_wide": 311,
+      "trades_opened": 814,
+      "zones_fractal": 4967,
+      "zones_fvg": 2239
+    },
+    "SOLUSDT": {
+      "cancelled_pending": 0,
+      "candidates": 5860,
+      "events": 9321,
+      "gap_resets": 1,
+      "m1_bars": 1678959,
+      "skip_session": 26488,
+      "skip_stop_too_tight": 5244,
+      "skip_stop_too_wide": 426,
+      "trades_opened": 5860,
+      "zones_fractal": 7359,
+      "zones_fvg": 2979
+    },
+    "TONUSDT": {
+      "cancelled_pending": 0,
+      "candidates": 1564,
+      "events": 4082,
+      "m1_bars": 748200,
+      "skip_session": 14057,
+      "skip_stop_too_tight": 6304,
+      "skip_stop_too_wide": 307,
+      "trades_opened": 1564,
+      "zones_fractal": 3142,
+      "zones_fvg": 1348
+    }
+  },
+  "data_version": "85323b459272d9c57e1709b92fcf42f35d6970bcf5109c260bb94cfdf8a35158",
+  "finished": "2026-11-26T10:19:04.210031+00:00",
+  "instruments": [
+    "BTCUSDT",
+    "ETHUSDT",
+    "EURUSD",
+    "SOLUSDT",
+    "TONUSDT"
+  ],
+  "run_id": "2e6a0a6209d121f2",
+  "split": "dev",
+  "strategy": "strategy_v1"
+}

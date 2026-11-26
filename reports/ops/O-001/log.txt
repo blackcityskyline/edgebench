@@ -1,0 +1,82 @@
+
+=== gates [2026-11-26T10:00:59+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli gates --quick
+PASS  G1 lint and format
+SKIP  G2  (not part of --quick)
+PASS  G3 unit tests
+SKIP  G4  (not part of --quick)
+SKIP  G5  (not part of --quick)
+PASS  G6 config schema  (1 strategy file(s))
+SKIP  G7 protected paths  (not a worker branch (agent/*))
+PASS  G8 repo hygiene
+gates: ok (SKIP is not PASS)
+--- exit 0, 17.6s
+
+=== data_info [2026-11-26T10:01:00+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data info
+binance/BTCUSDT: 2103760 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-31T23:59:00+00:00, side ['trade'], no ask
+binance/ETHUSDT: 2103760 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-31T23:59:00+00:00, side ['trade'], no ask
+binance/SOLUSDT: 2103759 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-31T23:59:00+00:00, side ['trade'], no ask
+binance/TONUSDT: 994620 rows, 2024-08-08T10:00:00+00:00 .. 2026-06-30T02:59:00+00:00, side ['trade'], no ask
+dukascopy/eurusd: 1488580 rows, 2022-11-01T00:00:00+00:00 .. 2026-10-30T20:59:00+00:00, side ['bid'], ask
+data_version 85323b459272d9c5
+--- exit 0, 1.3s
+
+=== data_verify [2026-11-26T10:01:09+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data verify
+store verified
+--- exit 0, 8.6s
+
+=== split [2026-11-26T10:01:11+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data split
+horizon  2022-11-01 00:00:00+00:00 .. 2026-11-01 00:00:00+00:00
+dev      2022-11-01 .. 2026-01-10 (exclusive)
+embargo  2 days
+holdout  from 2026-01-12 (derived)
+--- exit 0, 1.7s
+
+=== split_freeze [2026-11-26T10:01:13+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data split --write
+horizon  2022-11-01 00:00:00+00:00 .. 2026-11-01 00:00:00+00:00
+dev      2022-11-01 .. 2026-01-10 (exclusive)
+embargo  2 days
+holdout  from 2026-01-12 (derived)
+written <repo>/config/splits.yaml; commit it so the boundary stays fixed
+--- exit 0, 2.0s
+
+=== config_check [2026-11-26T10:01:15+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli config-check
+strategy_v1: ok, hash acf8cb35b049
+warning: instrument EURUSD: placeholder costs
+warning: instrument GBPUSD: placeholder costs
+warning: instrument XAUUSD: placeholder costs
+warning: instrument US100: placeholder costs
+warning: instrument BTCUSDT: placeholder costs
+warning: instrument ETHUSDT: placeholder costs
+warning: instrument SOLUSDT: placeholder costs
+warning: instrument TONUSDT: placeholder costs
+warning: session london: window not confirmed by the owner
+warning: session ny_am: window not confirmed by the owner
+warning: session crypto_evening: window not confirmed by the owner
+--- exit 0, 2.0s
+
+=== spreads [2026-11-26T10:01:18+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data spreads
+dukascopy/eurusd: n=1488580 median=3e-05 p25=2e-05 p75=5e-05 p95=9e-05
+  median by UTC hour: 00:3e-05 01:3e-05 02:3e-05 03:3e-05 04:3e-05 05:3e-05 06:3e-05 07:3e-05 08:3e-05 09:3e-05 10:3e-05 11:3e-05 12:3e-05 13:3e-05 14:3e-05 15:3e-05 16:3e-05 17:3e-05 18:3e-05 19:3e-05 20:3e-05 21:0.00014 22:7e-05 23:4e-05
+--- exit 0, 2.8s
+
+=== smoke [2026-11-26T10:01:23+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli run --instruments EURUSD --days 30
+EURUSD: loading dukascopy/eurusd (dev)
+  events 141, candidates 6, trades 6
+report: <repo>/runs/4bf4e3c35d4282c8/report.md
+tables: <repo>/data/runs/4bf4e3c35d4282c8
+--- exit 0, 5.7s
+
+=== full [2026-11-26T10:19:04+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli run --strategy strategy_v1 --instruments EURUSD,BTCUSDT,ETHUSDT,SOLUSDT,TONUSDT
+EURUSD: loading dukascopy/eurusd (dev)
+  events 6435, candidates 817, trades 814
+BTCUSDT: loading binance/BTCUSDT (dev)
+  events 9718, candidates 6704, trades 6704
+ETHUSDT: loading binance/ETHUSDT (dev)
+  events 9836, candidates 7195, trades 7195
+SOLUSDT: loading binance/SOLUSDT (dev)
+  events 9321, candidates 5860, trades 5860
+TONUSDT: loading binance/TONUSDT (dev)
+  events 4082, candidates 1564, trades 1564
+report: <repo>/runs/2e6a0a6209d121f2/report.md
+tables: <repo>/data/runs/2e6a0a6209d121f2
+--- exit 0, 1060.8s

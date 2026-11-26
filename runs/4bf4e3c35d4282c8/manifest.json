@@ -1,0 +1,28 @@
+{
+  "code_commit": "7d21e9e-dirty",
+  "config_hash": "acf8cb35b0497e7abae7a34e5922b1471f30ee3dbf7bfd54c2fa8a5eb71bb38d",
+  "cost_mult": 1.0,
+  "counts": {
+    "EURUSD": {
+      "cancelled_pending": 0,
+      "candidates": 6,
+      "events": 141,
+      "gap_resets": 26,
+      "m1_bars": 28899,
+      "skip_session": 413,
+      "skip_stop_too_tight": 315,
+      "skip_stop_too_wide": 2,
+      "trades_opened": 6,
+      "zones_fractal": 116,
+      "zones_fvg": 49
+    }
+  },
+  "data_version": "85323b459272d9c57e1709b92fcf42f35d6970bcf5109c260bb94cfdf8a35158",
+  "finished": "2026-11-26T10:01:23.546077+00:00",
+  "instruments": [
+    "EURUSD"
+  ],
+  "run_id": "4bf4e3c35d4282c8",
+  "split": "dev",
+  "strategy": "strategy_v1"
+}

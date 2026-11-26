@@ -1,0 +1,12 @@
+strategy_v1: ok, hash acf8cb35b049
+warning: instrument EURUSD: placeholder costs
+warning: instrument GBPUSD: placeholder costs
+warning: instrument XAUUSD: placeholder costs
+warning: instrument US100: placeholder costs
+warning: instrument BTCUSDT: placeholder costs
+warning: instrument ETHUSDT: placeholder costs
+warning: instrument SOLUSDT: placeholder costs
+warning: instrument TONUSDT: placeholder costs
+warning: session london: window not confirmed by the owner
+warning: session ny_am: window not confirmed by the owner
+warning: session crypto_evening: window not confirmed by the owner

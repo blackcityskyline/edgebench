@@ -1,0 +1,4 @@
+EURUSD: loading dukascopy/eurusd (dev)
+  events 141, candidates 6, trades 6
+report: <repo>/runs/4bf4e3c35d4282c8/report.md
+tables: <repo>/data/runs/4bf4e3c35d4282c8

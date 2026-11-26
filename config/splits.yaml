@@ -1,8 +1,8 @@
-# Dates stay null until data is pulled; the loader then derives them from the data horizon
-# using holdout_fraction (docs/CONTRACT.md section 7.1).
+# Frozen on 2026-11-26 from data 2022-11-01 .. 2026-11-01.
+# Do not change holdout_start after looking at holdout results (docs/CONTRACT.md 7.1-7.2).
 holdout_fraction: 0.2
 embargo_days: 2
 walk_forward_folds: 4
-dev_start: null
-dev_end: null
-holdout_start: null
+dev_start: 2022-11-01
+dev_end: 2026-01-10
+holdout_start: 2026-01-12
