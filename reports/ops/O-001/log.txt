@@ -95,3 +95,151 @@ TONUSDT: loading binance/TONUSDT (dev)
 report: <repo>/runs/3b82c28e0c72b068/report.md
 tables: <repo>/data/runs/3b82c28e0c72b068
 --- exit 0, 1158.7s
+
+=== charts [2026-11-26T10:38:37+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -c import subprocess, sys
+for trig in ['sweep', 'rejection', 'stall', 'inside']:
+    cmd = [sys.executable, '-m', 'edgebench.cli', 'chart', '--run', '2e6a0a6209d121f2',
+           '--trigger', trig, '--sample', '3', '--out', '/home/black/dev/me/edgebench/reports/ops/O-001/charts/context']
+    if False: cmd.append('--blind')
+    subprocess.run(cmd, check=False)
+
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+--- exit 0, 9.1s
+
+=== charts_blind [2026-11-26T10:38:46+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -c import subprocess, sys
+for trig in ['sweep', 'rejection', 'stall', 'inside']:
+    cmd = [sys.executable, '-m', 'edgebench.cli', 'chart', '--run', '2e6a0a6209d121f2',
+           '--trigger', trig, '--sample', '3', '--out', '/home/black/dev/me/edgebench/reports/ops/O-001/charts/blind']
+    if True: cmd.append('--blind')
+    subprocess.run(cmd, check=False)
+
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "<repo>/src/edgebench/cli.py", line 103, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "<repo>/src/edgebench/cli.py", line 99, in main
+    return int(args.func(args))
+               ~~~~~~~~~^^^^^^
+  File "<repo>/src/edgebench/run_cli.py", line 241, in draw
+    return _cmd_chart(args, repo_root)
+  File "<repo>/src/edgebench/run_cli.py", line 203, in _cmd_chart
+    path = render_candidate(bars, cand, mine, out_dir / f"{safe}.png", blind=args.blind)
+  File "<repo>/src/edgebench/chart.py", line 50, in render_candidate
+    import matplotlib
+ModuleNotFoundError: No module named 'matplotlib'
+--- exit 0, 8.6s
