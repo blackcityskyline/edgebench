@@ -98,6 +98,31 @@ def _cmd_verify(_: argparse.Namespace, repo_root: RepoRoot) -> int:
     return 1 if problems else 0
 
 
+def _cmd_spreads(_: argparse.Namespace, repo_root: RepoRoot) -> int:
+    """Measured ask-bid spread (close of M1 bars) per dataset that has ask candles."""
+    root = data_root(repo_root())
+    found = False
+    for (source, symbol), entries in sorted(_datasets(root).items()):
+        if not any(e["has_ask"] for e in entries):
+            continue
+        frame = read_raw_m1(root, source, symbol)
+        spread = (frame["ask_close"] - frame["close"]).dropna()
+        spread = spread[spread >= 0]
+        if spread.empty:
+            continue
+        found = True
+        q = spread.quantile([0.25, 0.5, 0.75, 0.95])
+        print(
+            f"{source}/{symbol}: n={len(spread)} median={q[0.5]:.6g} p25={q[0.25]:.6g} "
+            f"p75={q[0.75]:.6g} p95={q[0.95]:.6g}"
+        )
+        by_hour = spread.groupby(frame.loc[spread.index, "ts_open"].dt.hour).median()
+        print("  median by UTC hour: " + " ".join(f"{h:02d}:{v:.4g}" for h, v in by_hour.items()))
+    if not found:
+        print("no dataset with ask candles")
+    return 0
+
+
 def _cmd_gaps(args: argparse.Namespace, repo_root: RepoRoot) -> int:
     frame = read_raw_m1(data_root(repo_root()), args.source, args.symbol)
     gaps = find_gaps(frame, args.min_minutes)
@@ -184,6 +209,8 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser], repo_root
     gaps.add_argument("--min-minutes", type=int, default=5)
     gaps.add_argument("--top", type=int, default=10)
     bind(gaps, _cmd_gaps)
+
+    bind(commands.add_parser("spreads", help="measured spread of datasets with ask"), _cmd_spreads)
 
     split = commands.add_parser("split", help="show or freeze the dev/holdout boundary")
     split.add_argument("--write", action="store_true", help="freeze into config/splits.yaml")

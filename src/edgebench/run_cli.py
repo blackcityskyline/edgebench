@@ -76,10 +76,15 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
         warnings.append(
             "split is not frozen in config/splits.yaml (run `edgebench data split --write`)"
         )
+    if args.days:
+        warnings.append(f"smoke test: only the last {args.days} days of each dataset")
     commit = code_commit(repo)
     chash = strategy.config_hash()
     dver = data_version(root)
-    run_key = f"{chash}|cost={args.cost_mult:g}|{','.join(sorted(instruments))}|{args.split}"
+    run_key = (
+        f"{chash}|cost={args.cost_mult:g}|{','.join(sorted(instruments))}|{args.split}|"
+        f"days={args.days or 'all'}"
+    )
     run_id = make_run_id(run_key, dver, commit)
     holdout = None
     if args.split == "holdout":
@@ -110,6 +115,9 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
             print(f"  skipped: {exc}", file=sys.stderr)
             warnings.append(f"{name}: skipped ({exc})")
             continue
+        if args.days:
+            cut = frame["ts_open"].iloc[-1] - pd.Timedelta(days=args.days)
+            frame = frame[frame["ts_open"] >= cut].reset_index(drop=True)
         out = run_engine(strategy, name, iter_bars(frame, "M1"), costs, config.sessions)
         frames[name] = candidate_frame(out, name, strategy.exits.ladder_r)
         event_frames.append(event_frame(out, name))
@@ -206,6 +214,7 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser], repo_root
         "--cost-mult", type=float, default=1.0, help="multiplies spread, slippage, fees"
     )
     run.add_argument("--holdout-reason", help="required for --split holdout")
+    run.add_argument("--days", type=int, help="smoke test: only the last N days of each dataset")
 
     def go(args: argparse.Namespace) -> int:
         try:

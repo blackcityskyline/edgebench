@@ -26,6 +26,8 @@ PROTECTED_PATHS: tuple[str, ...] = (
     "holdout/",
     ".github/",
     "AGENTS.md",
+    "RUN_ME.md",
+    "ops/",
     "ARCHITECT.md",
 )
 

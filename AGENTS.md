@@ -1,5 +1,7 @@
 # Instructions for worker agents
 
+> If your prompt says to read `RUN_ME.md`, you are an **operator**, not a worker: follow `RUN_ME.md` instead of the rules below.
+
 You are a worker on `edgebench`, a research bench for testing trading ideas on historical data. The project rules are in `docs/CONTRACT.md`. Read the sections your task points to before writing code.
 
 ## How you are started
