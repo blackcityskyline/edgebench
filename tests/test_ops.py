@@ -194,3 +194,26 @@ def test_cost_study_pipeline_runs_three_cost_levels_on_one_candidate_set(
         frame = pd.read_parquet(data / "runs" / rid / "candidates.parquet")
         counts.append((len(frame), int(frame["traded"].sum())))
     assert counts[0] == counts[1] == counts[2] and counts[0][0] > 0
+
+
+def test_fetch_steps_skip_stored_instruments_and_reject_a_wrong_price_scale(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from edgebench.ops import fetch_steps
+
+    shutil.copytree(ROOT / "config", repo / "config")
+    data = repo / "data"
+    monkeypatch.setenv("EDGEBENCH_DATA", str(data))
+    write_m1(data, "dukascopy", "gbpusd", make_m1(500, seed=1, start_price=1.3), "bid")
+    write_m1(data, "dukascopy", "xauusd", make_m1(500, seed=2, start_price=3000.0), "bid")
+    write_m1(data, "dukascopy", "usatechidxusd", make_m1(500, seed=3, start_price=20.0), "bid")
+    out = repo / "reports" / "ops" / "O-009"
+    steps = fetch_steps(repo)
+    assert execute(steps, repo, out, report, "O-009", push=False) == 1  # index scale is 1000x off
+    status = {
+        k: v["status"] for k, v in json.loads((out / "state.json").read_text())["steps"].items()
+    }
+    assert status["fetch_gbpusd"] == status["ingest_xauusd"] == "skipped"
+    assert status["pricecheck_gbpusd"] == status["pricecheck_xauusd"] == "ok"
+    assert status["pricecheck_usatechidxusd"] == "failed"
+    assert "close first" in (out / "outputs" / "pricecheck_xauusd.txt").read_text()

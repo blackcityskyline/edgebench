@@ -210,10 +210,11 @@ def write_status(repo: Path, task_id: str, state: str) -> None:
 
 
 def _run_step(repo: Path, *extra: str) -> Callable[[Ctx], list[str] | None]:
-    """A `run` over every strategy instrument that has data; skipped when none has."""
-    inst = ",".join(available_instruments(repo))
+    """A `run` over every strategy instrument that has data (looked up when the step starts, so
+    data fetched by an earlier step counts); skipped when none has."""
 
     def build(ctx: Ctx) -> list[str] | None:
+        inst = ",".join(available_instruments(repo))
         if not inst:
             return None
         return ctx.cli("run", "--strategy", "strategy_v1", "--instruments", inst, *extra)
@@ -349,12 +350,74 @@ def first_run_report(ctx: Ctx, state: dict[str, object]) -> str:
 # -- cost study (O-002) -----------------------------------------------------------------------
 
 COST_MULTS = (("cost0", 0.0), ("cost1", 1.0), ("cost2", 2.0))
+# Dukascopy symbol, store name, price unit of the archive, plausible close range (sanity check)
+FETCH = (
+    ("GBPUSD", "gbpusd", 1e-5, (0.9, 1.8)),
+    ("XAUUSD", "xauusd", 1e-3, (1000.0, 6000.0)),
+    ("USATECHIDXUSD", "usatechidxusd", 1e-3, (5000.0, 40000.0)),
+)
 
 
-def cost_study_steps(repo: Path) -> list[Step]:
-    steps = [
-        Step("gates", lambda c: c.cli("gates", "--quick")),
+def _in_store(repo: Path, symbol: str) -> bool:
+    return ("dukascopy", symbol) in {
+        (str(e["source"]), str(e["symbol"])) for e in load_manifest(data_root(repo)).values()
+    }
+
+
+def fetch_steps(repo: Path) -> list[Step]:
+    """Download, ingest and sanity check the Dukascopy instruments that are not in the store."""
+    steps: list[Step] = []
+    for symbol, store, point, (lo, hi) in FETCH:
+        raw = f"data/raw/dukascopy/{store}"
+
+        def fetch(
+            ctx: Ctx, symbol: str = symbol, store: str = store, point: float = point
+        ) -> list[str] | None:
+            if _in_store(repo, store):
+                return None
+            return [
+                ctx.python, "tools/fetch_dukascopy.py", "--symbol", symbol,
+                "--from", "2022-11-01", "--to", "2026-11-01", "--side", "both",
+                "--dir", "data/raw/dukascopy", "--workers", "3", "--point", f"{point:g}",
+            ]  # fmt: skip
+
+        def ingest(ctx: Ctx, store: str = store, raw: str = raw) -> list[str] | None:
+            if _in_store(repo, store):
+                return None
+            return ctx.cli(
+                "data", "ingest", "--source", "dukascopy", "--symbol", store,
+                "--files", f"{raw}-bid/m1.csv", "--ask-files", f"{raw}-ask/m1.csv",
+            )  # fmt: skip
+
+        def check(ctx: Ctx, store: str = store, lo: float = lo, hi: float = hi) -> list[str] | None:
+            code = (
+                "import sys\nfrom pathlib import Path\n"
+                "from edgebench.data.store import read_raw_m1\n"
+                "from edgebench.data_cli import data_root\n"
+                f"f = read_raw_m1(data_root(Path({str(repo)!r})), 'dukascopy', {store!r})\n"
+                "c = f['close']\n"
+                f"print({store!r}, len(f), f['ts_open'].min(), f['ts_open'].max())\n"
+                "print('close first', c.iloc[0], 'last', c.iloc[-1])\n"
+                "print('close min', c.min(), 'max', c.max())\n"
+                f"sys.exit(0 if {lo} <= c.min() and c.max() <= {hi} else 1)\n"
+            )
+            return [ctx.python, "-c", code]
+
+        steps += [
+            Step(f"fetch_{store}", fetch),
+            Step(f"ingest_{store}", ingest),
+            Step(f"pricecheck_{store}", check),
+        ]
+    return steps
+
+
+def cost_study_steps(repo: Path, fetch: bool = False) -> list[Step]:
+    steps = [Step("gates", lambda c: c.cli("gates", "--quick"))]
+    if fetch:
+        steps += fetch_steps(repo)
+    steps += [
         Step("data_verify", lambda c: c.cli("data", "verify")),
+        Step("data_info", lambda c: c.cli("data", "info"), required=False),
         Step("spreads", lambda c: c.cli("data", "spreads"), required=False),
     ]
     for name, mult in COST_MULTS:
@@ -362,11 +425,27 @@ def cost_study_steps(repo: Path) -> list[Step]:
     return steps
 
 
+def cost_study_report_for(
+    task_id: str,
+) -> Callable[[Ctx, dict[str, object]], str]:
+    def report(ctx: Ctx, state: dict[str, object]) -> str:
+        return _cost_study_report(ctx, state, task_id)
+
+    return report
+
+
 def cost_study_report(ctx: Ctx, state: dict[str, object]) -> str:
+    return _cost_study_report(ctx, state, "O-002")
+
+
+def _cost_study_report(ctx: Ctx, state: dict[str, object], task_id: str) -> str:
     steps: dict[str, dict[str, object]] = state.get("steps", {})  # type: ignore[assignment]
-    out = [f"# O-002 cost study: {state['state']}", "", f"updated {state.get('updated')}", ""]
+    out = [f"# {task_id} cost study: {state['state']}", "", f"updated {state.get('updated')}", ""]
     out += ["| step | status | seconds |", "|---|---|---|"]
     out += [f"| {n} | {s.get('status')} | {s.get('seconds', '')} |" for n, s in steps.items()]
+    for name in sorted(ctx.outputs):
+        if name.startswith("pricecheck_") or name in ("data_info", "spreads"):
+            out += ["", f"## {name}", "", _fence(ctx.outputs[name])]
     frames: dict[float, pd.DataFrame] = {}
     root = data_root(ctx.repo)
     for name, mult in COST_MULTS:
@@ -377,11 +456,11 @@ def cost_study_report(ctx: Ctx, state: dict[str, object]) -> str:
             src = ctx.repo / "runs" / run_id / "report.md"
             if src.exists():
                 shutil.copy(src, ctx.out_dir / f"run-{name}.md")
-            out.append(f"\n`{name}`: run `{run_id}`, report `reports/ops/O-002/run-{name}.md`")
+            out.append(f"\n`{name}`: run `{run_id}`, report `reports/ops/{task_id}/run-{name}.md`")
     if len(frames) == len(COST_MULTS):
         text = build_cost_study(frames)
         (ctx.out_dir / "cost-study.md").write_text(text, encoding="utf-8")
-        out += ["", "Cost study table: `reports/ops/O-002/cost-study.md`", "", text]
+        out += ["", f"Cost study table: `reports/ops/{task_id}/cost-study.md`", "", text]
     else:
         out += ["", "Cost study not built: not all three runs finished."]
     failed = [n for n, s in steps.items() if s.get("status") == "failed"]
@@ -389,7 +468,7 @@ def cost_study_report(ctx: Ctx, state: dict[str, object]) -> str:
         out += ["", "## Failures", ""]
         for n in failed:
             out += [f"### {n}", "", _fence(ctx.outputs.get(n, ""), 60)]
-    out += ["", "Full console log: `reports/ops/O-002/log.txt`.", ""]
+    out += ["", f"Full console log: `reports/ops/{task_id}/log.txt`.", ""]
     return "\n".join(out)
 
 
@@ -400,6 +479,19 @@ def cmd_cost_study(args: argparse.Namespace, repo: Path) -> int:
         repo / "reports" / "ops" / "O-002",
         cost_study_report,
         "O-002",
+        args.force,
+        not args.no_push,
+    )
+
+
+def cmd_expand(args: argparse.Namespace, repo: Path) -> int:
+    """O-003: fetch the missing Dukascopy instruments, then the cost study on the venue costs."""
+    return execute(
+        cost_study_steps(repo, fetch=True),
+        repo,
+        repo / "reports" / "ops" / "O-003",
+        cost_study_report_for("O-003"),
+        "O-003",
         args.force,
         not args.no_push,
     )
@@ -450,6 +542,12 @@ def register(
     cost.add_argument("--force", action="store_true", help="redo finished steps")
     cost.add_argument("--no-push", action="store_true", help="commit but do not push")
     cost.set_defaults(func=lambda a: cmd_cost_study(a, repo_root()))
+    expand = commands.add_parser(
+        "expand", help="O-003: fetch GBPUSD/XAUUSD/US100, then the cost study on venue costs"
+    )
+    expand.add_argument("--force", action="store_true", help="redo finished steps")
+    expand.add_argument("--no-push", action="store_true", help="commit but do not push")
+    expand.set_defaults(func=lambda a: cmd_expand(a, repo_root()))
     status = commands.add_parser("status", help="progress of a running pipeline")
     status.add_argument("task", nargs="?", default="O-001")
     status.set_defaults(func=lambda a: cmd_status(a, repo_root()))

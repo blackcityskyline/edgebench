@@ -17,7 +17,7 @@ ls ops/O-*.md                                # the list of ops tasks, in order
 ```
 
 Take the first `O-NNN-*.md` file whose id is **not** `done` in `ops/STATUS.md` (a missing row means
-not done). Open it and follow it. Tasks are done in order; O-001 is `ops/O-001-first-run.md`, O-002 is `ops/O-002-cost-study.md`.
+not done). Open it and follow it. Tasks are done in order; O-001 is `ops/O-001-first-run.md`, O-002 is `ops/O-002-cost-study.md`, O-003 is `ops/O-003-expand-and-costs.md`.
 
 ## 2. Environment (once)
 

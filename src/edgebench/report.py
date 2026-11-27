@@ -239,5 +239,33 @@ def build_cost_study(
             "",
             _table(["cell", *[f"x{m:g}" for m in mults]], drows),
         ]
+    if 1.0 in traded and "candidate_id" in base:
+        edges = [0.0, 0.1, 0.2, 0.5, float("inf")]
+        names = ["<=0.1R", "0.1-0.2R", "0.2-0.5R", ">0.5R"]
+        bucket = pd.cut(
+            traded[1.0].set_index("candidate_id")["cost_r"],
+            edges,
+            labels=names,
+            include_lowest=True,
+        )
+        brows = []
+        for name in names:
+            for trig in sorted(set(base["trigger"])):
+
+                def pick(d: pd.DataFrame, n: str = name, t: str = trig) -> pd.DataFrame:
+                    b = d["candidate_id"].map(bucket)
+                    return d[(b == n) & (d["trigger"] == t)]
+
+                if len(pick(base)) >= MIN_N:
+                    brows.append(row(f"{name} / {trig}", pick))
+        parts += [
+            "",
+            "## By cost in R (bucket of `cost R @x1`, all instruments)",
+            "",
+            "Which candidates are cheap enough to trade: the same candidates, split by how much "
+            "of the risk the costs take.",
+            "",
+            _table(header, brows),
+        ]
     parts.append("")
     return "\n".join(parts)

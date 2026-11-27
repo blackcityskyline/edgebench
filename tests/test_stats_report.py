@@ -84,7 +84,7 @@ def synthetic_frame() -> pd.DataFrame:
                 "trigger": trigger, "instrument": "EURUSD", "side": "LONG", "session": "all",
                 "zone_kind": "FVG", "exit_reason": "TARGET" if win else "STOP",
                 "day": f"2024-{(i % 200):03d}", "traded": True, "ambiguous_bars": 0,
-                "risk_bps": 5.0, "cost_r": 0.1,
+                "risk_bps": 5.0, "cost_r": 0.1, "candidate_id": f"{trigger}-{i}",
             }  # fmt: skip
             for k in LADDER:
                 row[f"r_{k:g}"] = r
@@ -131,3 +131,4 @@ def test_cost_study_compares_multipliers_on_the_same_candidates() -> None:
     assert cells[0].startswith("+0.800") and cells[1].startswith("+0.500")
     assert cells[2].startswith("-0.100")
     assert "## Trigger minus baseline" in text
+    assert "## By cost in R" in text and "<=0.1R / good" in text
