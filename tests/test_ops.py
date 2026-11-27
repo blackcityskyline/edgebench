@@ -163,3 +163,34 @@ def test_scrub_hides_the_repository_and_home_paths(tmp_path: Path) -> None:
     clean = scrub(text, tmp_path)
     assert str(tmp_path) not in clean and home not in clean
     assert run_id_from(clean) == "ab12"
+
+
+def test_cost_study_pipeline_runs_three_cost_levels_on_one_candidate_set(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import pandas as pd
+
+    from edgebench.ops import cost_study_report, cost_study_steps
+
+    shutil.copytree(ROOT / "config", repo / "config")
+    data = repo / "data"
+    monkeypatch.setenv("EDGEBENCH_DATA", str(data))
+    monkeypatch.setenv("EDGEBENCH_ROOT", str(repo))
+    write_m1(data, "dukascopy", "eurusd", make_m1(60 * 24 * 40, seed=3), "bid")
+    steps = [s for s in cost_study_steps(repo) if s.name.startswith("cost")]
+    out = repo / "reports" / "ops" / "O-002"
+    assert execute(steps, repo, out, cost_study_report, "O-002", push=False) == 0
+    text = (out / "REPORT.md").read_text()
+    assert "x0" in text and "x2" in text and (out / "cost-study.md").exists()
+    ids = [
+        json.loads((out / "state.json").read_text())["steps"][n]["status"]
+        for n in ("cost0", "cost1", "cost2")
+    ]
+    assert ids == ["ok", "ok", "ok"]
+    counts = []
+    for n in ("cost0", "cost1", "cost2"):
+        rid = run_id_from((out / "outputs" / f"{n}.txt").read_text())
+        assert rid
+        frame = pd.read_parquet(data / "runs" / rid / "candidates.parquet")
+        counts.append((len(frame), int(frame["traded"].sum())))
+    assert counts[0] == counts[1] == counts[2] and counts[0][0] > 0

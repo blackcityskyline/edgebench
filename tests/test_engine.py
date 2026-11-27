@@ -176,3 +176,15 @@ def test_bars_must_be_increasing_and_m1() -> None:
         eng.on_m1(bars[4])
     with pytest.raises(ValueError, match="M1"):
         eng.on_m1(Bar(START, 1, 1, 1, 1, 0, "H1"))
+
+
+def test_cost_multiplier_changes_results_but_not_which_candidates_exist() -> None:
+    rows, _, _ = scenario()
+    bars = to_bars(rows)
+    spec_costs = CostModel(0.02, 0.01, 0.0, nominal_spread=0.02)
+    doubled = CostModel(0.04, 0.02, 0.0, nominal_spread=0.02)
+    base = run_engine(config(), "EURUSD", bars, spec_costs, SESSIONS)
+    more = run_engine(config(), "EURUSD", bars, doubled, SESSIONS)
+    assert [c.candidate_id for c in more.candidates] == [c.candidate_id for c in base.candidates]
+    assert [c.stop_price for c in more.candidates] == [c.stop_price for c in base.candidates]
+    assert more.trades[0].entry_fill > base.trades[0].entry_fill

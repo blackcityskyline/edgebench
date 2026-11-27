@@ -53,7 +53,8 @@ def _table(header: list[str], rows: list[list[str]]) -> str:
 def _group_rows(df: pd.DataFrame, by: str, ks: list[float], seed: int) -> list[list[str]]:
     rows: list[list[str]] = []
     for name, g in df.groupby(by, dropna=False, sort=True):
-        row = [str(name), str(len(g)), str(g["day"].nunique())]
+        row = [str(name), str(len(g)), str(g["day"].nunique()), _median(g, "risk_bps", ".1f"),
+               _median(g, "cost_r", ".2f")]  # fmt: skip
         small = len(g) < MIN_N
         for k in ks:
             key = rung_key(k)
@@ -64,8 +65,12 @@ def _group_rows(df: pd.DataFrame, by: str, ks: list[float], seed: int) -> list[l
     return rows
 
 
+def _median(g: pd.DataFrame, col: str, fmt: str) -> str:
+    return format(float(g[col].median()), fmt) if col in g and g[col].notna().any() else "-"
+
+
 def _header(first: str, ks: list[float]) -> list[str]:
-    cols = [first, "n", "days"]
+    cols = [first, "n", "days", "stop bps", "cost R"]
     for k in ks:
         cols += [f"hit {rung_key(k)}R", f"E[R] @{rung_key(k)}R"]
     return cols
@@ -92,6 +97,7 @@ def build_report(
     frames: dict[str, pd.DataFrame], meta: RunMeta, ladder_r: list[float], seed: int = 0
 ) -> str:
     ks = _rungs(ladder_r)
+    frames = {k: v.assign(session=v["session"].fillna("none")) for k, v in frames.items() if len(v)}
     parts = [f"# Run {meta.run_id}: {meta.strategy} on {meta.split}", ""]
     parts.append(
         f"config `{meta.config_hash[:12]}` | data `{meta.data_version[:12]}` | "
@@ -121,7 +127,9 @@ def build_report(
         "",
         f"Cells show `E[R] [95% day-block interval]`; `*` means the interval excludes zero. "
         f"Groups with n<{MIN_N} are not evaluated. Many cells are shown, so some `*` are expected "
-        "by chance (no multiple-comparison correction).",
+        "by chance (no multiple-comparison correction). `stop bps` is the median stop distance in "
+        "basis points of price; `cost R` is the median total friction (spread, stop slippage, "
+        "commission) as a fraction of the risk: when it is large, costs decide the result.",
         "",
         "## By trigger (all instruments)",
         "",
@@ -156,4 +164,80 @@ def build_report(
         f"{int(df['ambiguous_bars'].sum())} in {len(df)} trades.",
         "",
     ]
+    return "\n".join(parts)
+
+
+def build_cost_study(
+    frames_by_mult: dict[float, pd.DataFrame], rung: float = 2.0, seed: int = 0
+) -> str:
+    """E[R] at one target for the same candidates priced with different cost multipliers.
+
+    ``x0`` is frictionless (no spread, slippage or fees): it shows what the entries are worth
+    before costs, and for the pattern-free ``baseline`` it should be close to zero. The candidate
+    set is identical across multipliers because filters use the nominal spread.
+    """
+    key = f"r_{rung_key(rung)}"
+    mults = sorted(frames_by_mult)
+    traded = {m: f[f["traded"]] for m, f in frames_by_mult.items()}
+    base = traded[mults[0]]
+    parts = [f"# Cost study: E[R] @{rung_key(rung)}R by cost multiplier", ""]
+
+    def cells(mask_fn: object) -> list[str]:
+        out = []
+        for m in mults:
+            g = mask_fn(traded[m])  # type: ignore[operator]
+            out.append(
+                "-" if len(g) < MIN_N else _fmt(day_bootstrap_mean(g[key], g["day"], seed=seed))
+            )
+        return out
+
+    header = ["cell", "n", "stop bps", "cost R @x1", *[f"x{m:g}" for m in mults]]
+
+    def row(label: str, fn: object) -> list[str]:
+        g = fn(base)  # type: ignore[operator]
+        ref = fn(traded.get(1.0, base))  # type: ignore[operator]
+        return [
+            label,
+            str(len(g)),
+            _median(g, "risk_bps", ".1f"),
+            _median(ref, "cost_r", ".2f"),
+            *cells(fn),
+        ]
+
+    rows = [
+        row(trig, lambda d, t=trig: d[d["trigger"] == t]) for trig in sorted(set(base["trigger"]))
+    ]
+    parts += ["## By trigger (all instruments)", "", _table(header, rows)]
+    rows = [
+        row(
+            f"{inst} / {trig}",
+            lambda d, i=inst, t=trig: d[(d["instrument"] == i) & (d["trigger"] == t)],
+        )
+        for inst in sorted(set(base["instrument"]))
+        for trig in sorted(set(base[base["instrument"] == inst]["trigger"]))
+    ]
+    parts += ["", "## By instrument and trigger", "", _table(header, rows)]
+    if "baseline" in set(base["trigger"]):
+        drows = []
+        for inst in sorted(set(base["instrument"])):
+            for trig in sorted(set(base["trigger"]) - {"baseline"}):
+                cell = [f"{inst} / {trig} - baseline"]
+                for m in mults:
+                    d = traded[m]
+                    a = d[(d["instrument"] == inst) & (d["trigger"] == trig)]
+                    b = d[(d["instrument"] == inst) & (d["trigger"] == "baseline")]
+                    if len(a) < MIN_N or len(b) < MIN_N:
+                        cell.append("-")
+                    else:
+                        cell.append(
+                            _fmt(day_bootstrap_diff(a[key], a["day"], b[key], b["day"], seed=seed))
+                        )
+                drows.append(cell)
+        parts += [
+            "",
+            "## Trigger minus baseline",
+            "",
+            _table(["cell", *[f"x{m:g}" for m in mults]], drows),
+        ]
+    parts.append("")
     return "\n".join(parts)

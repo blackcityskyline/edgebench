@@ -22,9 +22,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pandas as pd
+
 from edgebench.config import load_all
 from edgebench.data.store import load_manifest
 from edgebench.data_cli import data_root
+from edgebench.report import build_cost_study
 
 PUSH_ALLOWLIST = ("reports/ops", "runs", "config/splits.yaml", "ops/STATUS.md")
 TAIL_LINES = 40
@@ -203,6 +206,21 @@ def write_status(repo: Path, task_id: str, state: str) -> None:
     path.write_text("\n".join([*head, *sorted(rows)]) + "\n", encoding="utf-8")
 
 
+# -- shared steps ------------------------------------------------------------------------------
+
+
+def _run_step(repo: Path, *extra: str) -> Callable[[Ctx], list[str] | None]:
+    """A `run` over every strategy instrument that has data; skipped when none has."""
+    inst = ",".join(available_instruments(repo))
+
+    def build(ctx: Ctx) -> list[str] | None:
+        if not inst:
+            return None
+        return ctx.cli("run", "--strategy", "strategy_v1", "--instruments", inst, *extra)
+
+    return build
+
+
 # -- first-run ---------------------------------------------------------------------------------
 
 
@@ -328,6 +346,65 @@ def first_run_report(ctx: Ctx, state: dict[str, object]) -> str:
     return "\n".join(out)
 
 
+# -- cost study (O-002) -----------------------------------------------------------------------
+
+COST_MULTS = (("cost0", 0.0), ("cost1", 1.0), ("cost2", 2.0))
+
+
+def cost_study_steps(repo: Path) -> list[Step]:
+    steps = [
+        Step("gates", lambda c: c.cli("gates", "--quick")),
+        Step("data_verify", lambda c: c.cli("data", "verify")),
+        Step("spreads", lambda c: c.cli("data", "spreads"), required=False),
+    ]
+    for name, mult in COST_MULTS:
+        steps.append(Step(name, _run_step(repo, "--cost-mult", f"{mult:g}"), checkpoint=True))
+    return steps
+
+
+def cost_study_report(ctx: Ctx, state: dict[str, object]) -> str:
+    steps: dict[str, dict[str, object]] = state.get("steps", {})  # type: ignore[assignment]
+    out = [f"# O-002 cost study: {state['state']}", "", f"updated {state.get('updated')}", ""]
+    out += ["| step | status | seconds |", "|---|---|---|"]
+    out += [f"| {n} | {s.get('status')} | {s.get('seconds', '')} |" for n, s in steps.items()]
+    frames: dict[float, pd.DataFrame] = {}
+    root = data_root(ctx.repo)
+    for name, mult in COST_MULTS:
+        run_id = run_id_from(ctx.outputs.get(name, ""))
+        path = root / "runs" / (run_id or "-") / "candidates.parquet"
+        if run_id and path.exists():
+            frames[mult] = pd.read_parquet(path)
+            src = ctx.repo / "runs" / run_id / "report.md"
+            if src.exists():
+                shutil.copy(src, ctx.out_dir / f"run-{name}.md")
+            out.append(f"\n`{name}`: run `{run_id}`, report `reports/ops/O-002/run-{name}.md`")
+    if len(frames) == len(COST_MULTS):
+        text = build_cost_study(frames)
+        (ctx.out_dir / "cost-study.md").write_text(text, encoding="utf-8")
+        out += ["", "Cost study table: `reports/ops/O-002/cost-study.md`", "", text]
+    else:
+        out += ["", "Cost study not built: not all three runs finished."]
+    failed = [n for n, s in steps.items() if s.get("status") == "failed"]
+    if failed:
+        out += ["", "## Failures", ""]
+        for n in failed:
+            out += [f"### {n}", "", _fence(ctx.outputs.get(n, ""), 60)]
+    out += ["", "Full console log: `reports/ops/O-002/log.txt`.", ""]
+    return "\n".join(out)
+
+
+def cmd_cost_study(args: argparse.Namespace, repo: Path) -> int:
+    return execute(
+        cost_study_steps(repo),
+        repo,
+        repo / "reports" / "ops" / "O-002",
+        cost_study_report,
+        "O-002",
+        args.force,
+        not args.no_push,
+    )
+
+
 def _repo_root_default() -> Path:
     return Path.cwd()
 
@@ -369,6 +446,10 @@ def register(
     first.add_argument("--force", action="store_true", help="redo finished steps")
     first.add_argument("--no-push", action="store_true", help="commit but do not push")
     first.set_defaults(func=lambda a: cmd_first_run(a, repo_root()))
+    cost = commands.add_parser("cost-study", help="O-002: gross / net / x2 cost comparison")
+    cost.add_argument("--force", action="store_true", help="redo finished steps")
+    cost.add_argument("--no-push", action="store_true", help="commit but do not push")
+    cost.set_defaults(func=lambda a: cmd_cost_study(a, repo_root()))
     status = commands.add_parser("status", help="progress of a running pipeline")
     status.add_argument("task", nargs="?", default="O-001")
     status.set_defaults(func=lambda a: cmd_status(a, repo_root()))

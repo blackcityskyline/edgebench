@@ -80,6 +80,7 @@ def candidate_frame(out: RunOutput, instrument: str, ladder_r: list[float]) -> p
         row |= {
             "entry_fill": trade.entry_fill if trade else nan,
             "risk_distance": trade.risk_distance if trade else nan,
+            "risk_bps": 1e4 * trade.risk_distance / trade.entry_fill if trade else nan,
             "exit_reason": trade.exit_reason.value if trade else None,
             "r_ref": trade.r_net if trade else nan,
             "mfe_r": trade.mfe_r if trade else nan,

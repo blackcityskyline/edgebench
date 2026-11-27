@@ -4,11 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 import pandas as pd
 
@@ -59,6 +63,65 @@ def _ledger_trials(ledger: Path, config_hash: str) -> int:
     return len(seen)
 
 
+@dataclass
+class _Job:
+    repo: Path
+    strategy: str
+    instrument: str
+    split: Literal["dev", "holdout"]
+    bounds: SplitBounds
+    mult: float
+    days: int | None
+    holdout: HoldoutRequest | None
+
+
+@dataclass
+class _Result:
+    instrument: str
+    message: str
+    warning: str | None = None
+    candidates: pd.DataFrame | None = None
+    events: pd.DataFrame = field(default_factory=pd.DataFrame)
+    observations: pd.DataFrame = field(default_factory=pd.DataFrame)
+    counts: dict[str, int] = field(default_factory=dict)
+
+
+def _run_instrument(job: _Job) -> _Result:
+    """One instrument end to end. Top level so it can run in a worker process."""
+    config = load_all(job.repo / "config")
+    strategy = config.strategies[job.strategy]
+    spec = config.instruments.instruments[job.instrument]
+    costs = CostModel.from_spec(spec, job.mult)
+    root = data_root(job.repo)
+    head = f"{job.instrument}: {spec.source}/{spec.symbol} ({job.split})"
+    try:
+        frame = load_m1(root, spec.source, spec.symbol, job.bounds, job.split, job.holdout)
+    except HoldoutDenied:
+        raise  # a denied holdout is an error for the whole run, never a quiet skip
+    except DataError as exc:
+        return _Result(
+            job.instrument, f"{head}: skipped ({exc})", f"{job.instrument}: skipped ({exc})"
+        )
+    if job.days:
+        cut = frame["ts_open"].iloc[-1] - pd.Timedelta(days=job.days)
+        frame = frame[frame["ts_open"] >= cut].reset_index(drop=True)
+    out = run_engine(strategy, job.instrument, iter_bars(frame, "M1"), costs, config.sessions)
+    message = (
+        f"{head}: events {len(out.events)}, candidates {len(out.candidates)}, "
+        f"trades {len(out.trades)}"
+    )
+    warning = f"{job.instrument}: placeholder costs" if spec.placeholder else None
+    return _Result(
+        job.instrument,
+        message,
+        warning,
+        candidate_frame(out, job.instrument, strategy.exits.ladder_r),
+        event_frame(out, job.instrument),
+        observation_frame(out, job.instrument),
+        out.counts,
+    )
+
+
 def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
     repo = repo_root()
     config = load_all(repo / "config")
@@ -98,36 +161,26 @@ def _cmd_run(args: argparse.Namespace, repo_root: RepoRoot) -> int:
     event_frames: list[pd.DataFrame] = []
     obs_frames: list[pd.DataFrame] = []
     counts: dict[str, dict[str, int]] = {}
-    for name in instruments:
-        spec = config.instruments.instruments[name]
-        mult = args.cost_mult
-        costs = CostModel(
-            spec.spread * mult,
-            spec.slippage_spreads * spec.spread * mult,
-            spec.commission_bps * mult,
-        )
-        if spec.placeholder:
-            warnings.append(f"{name}: placeholder costs")
-        print(f"{name}: loading {spec.source}/{spec.symbol} ({args.split})", flush=True)
-        try:
-            frame = load_m1(root, spec.source, spec.symbol, bounds, args.split, holdout)
-        except DataError as exc:
-            print(f"  skipped: {exc}", file=sys.stderr)
-            warnings.append(f"{name}: skipped ({exc})")
+    jobs = [
+        _Job(repo, args.strategy, name, args.split, bounds, args.cost_mult, args.days, holdout)
+        for name in instruments
+    ]
+    workers = max(1, min(args.jobs, len(jobs)))
+    if workers > 1:
+        with ProcessPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(_run_instrument, jobs))
+    else:
+        results = [_run_instrument(job) for job in jobs]
+    for res in results:
+        print(res.message, flush=True)
+        if res.warning:
+            warnings.append(res.warning)
+        if res.candidates is None:
             continue
-        if args.days:
-            cut = frame["ts_open"].iloc[-1] - pd.Timedelta(days=args.days)
-            frame = frame[frame["ts_open"] >= cut].reset_index(drop=True)
-        out = run_engine(strategy, name, iter_bars(frame, "M1"), costs, config.sessions)
-        frames[name] = candidate_frame(out, name, strategy.exits.ladder_r)
-        event_frames.append(event_frame(out, name))
-        obs_frames.append(observation_frame(out, name))
-        counts[name] = out.counts
-        print(
-            f"  events {len(out.events)}, candidates {len(out.candidates)}, "
-            f"trades {len(out.trades)}",
-            flush=True,
-        )
+        frames[res.instrument] = res.candidates
+        event_frames.append(res.events)
+        obs_frames.append(res.observations)
+        counts[res.instrument] = res.counts
     if not frames:
         raise DataError("no instrument could be run")
     meta = RunMeta(
@@ -215,6 +268,9 @@ def register(sub: argparse._SubParsersAction[argparse.ArgumentParser], repo_root
     )
     run.add_argument("--holdout-reason", help="required for --split holdout")
     run.add_argument("--days", type=int, help="smoke test: only the last N days of each dataset")
+    run.add_argument(
+        "--jobs", type=int, default=min(4, os.cpu_count() or 1), help="instruments in parallel"
+    )
 
     def go(args: argparse.Namespace) -> int:
         try:

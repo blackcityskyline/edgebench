@@ -38,7 +38,10 @@ def test_cost_model_from_spec_and_validation() -> None:
         source="binance", symbol="BTCUSDT", tick_size=0.01, spread=0.1,
         slippage_spreads=0.5, commission_bps=10,
     )  # fmt: skip
-    assert CostModel.from_spec(spec) == CostModel(0.1, 0.05, 10)
+    assert CostModel.from_spec(spec) == CostModel(0.1, 0.05, 10, 0.1)
+    doubled = CostModel.from_spec(spec, 2.0)
+    assert (doubled.spread, doubled.slippage, doubled.commission_bps) == (0.2, 0.1, 20)
+    assert doubled.filter_spread == 0.1 and CostModel(0.3).filter_spread == 0.3
     with pytest.raises(ValueError):
         CostModel(-1.0)
 

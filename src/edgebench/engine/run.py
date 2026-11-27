@@ -308,7 +308,9 @@ class Engine:
         cfg, costs = self._cfg, self._costs
         long = used[0].direction is Direction.BULL
         extremes = [self._extreme(o, long) for o in used]
-        buffer = cfg.entry.stop_buffer.spreads * costs.spread + cfg.entry.stop_buffer.atr_m1 * atr
+        buffer = (
+            cfg.entry.stop_buffer.spreads * costs.filter_spread + cfg.entry.stop_buffer.atr_m1 * atr
+        )
         entry_ref = bar.close
         stop = min(extremes) - buffer if long else max(extremes) + buffer
         distance = entry_ref - stop if long else stop - entry_ref
@@ -316,7 +318,7 @@ class Engine:
         if distance <= 0:
             self._counts["skip_price_beyond_stop"] += 1
             return False
-        if distance < cfg.entry.min_stop_spreads * costs.spread:
+        if distance < cfg.entry.min_stop_spreads * costs.filter_spread:
             self._counts["skip_stop_too_tight"] += 1
             return False
         if not atr_h1 or distance > cfg.entry.max_stop_atr_h1 * atr_h1:

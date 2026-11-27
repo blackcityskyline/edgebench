@@ -84,6 +84,7 @@ def synthetic_frame() -> pd.DataFrame:
                 "trigger": trigger, "instrument": "EURUSD", "side": "LONG", "session": "all",
                 "zone_kind": "FVG", "exit_reason": "TARGET" if win else "STOP",
                 "day": f"2024-{(i % 200):03d}", "traded": True, "ambiguous_bars": 0,
+                "risk_bps": 5.0, "cost_r": 0.1,
             }  # fmt: skip
             for k in LADDER:
                 row[f"r_{k:g}"] = r
@@ -115,3 +116,18 @@ def test_small_groups_are_not_evaluated_and_empty_runs_say_so() -> None:
     assert "n<30" in build_report({"EURUSD": frame}, meta, LADDER)
     empty = frame.assign(traded=False)
     assert "No traded candidates." in build_report({"EURUSD": empty}, meta, LADDER)
+
+
+def test_cost_study_compares_multipliers_on_the_same_candidates() -> None:
+    from edgebench.report import build_cost_study
+
+    base = synthetic_frame()
+    worse = base.assign(**{f"r_{k:g}": base[f"r_{k:g}"] - 0.6 for k in LADDER})  # costs eat 0.6R
+    zero = base.assign(**{f"r_{k:g}": base[f"r_{k:g}"] + 0.3 for k in LADDER})
+    text = build_cost_study({0.0: zero, 1.0: base, 2.0: worse})
+    assert "x0" in text and "x1" in text and "x2" in text
+    good = next(ln for ln in text.splitlines() if ln.startswith("| good |"))
+    cells = [c.strip() for c in good.split("|")[5:-1]]
+    assert cells[0].startswith("+0.800") and cells[1].startswith("+0.500")
+    assert cells[2].startswith("-0.100")
+    assert "## Trigger minus baseline" in text

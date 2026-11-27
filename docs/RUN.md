@@ -40,3 +40,13 @@ PNG files go to `data/charts/<run_id>/`. A normal chart shows the H1 zone, the d
 pattern markers, the stop, the fill and the 1R/2R/3R levels. `--blind` shows only what was known at the
 decision (bars closed by then, no outcome), the view used for labeling. Use it to check by eye that the
 detectors mark what you would mark; disagreements are the most useful input for tuning the definitions.
+
+## Cost study
+
+Net results at micro-stops are dominated by friction, so judge entries in three steps:
+`edgebench ops cost-study` (task O-002) runs the same candidates at cost x0 (no spread, slippage or
+fees), x1 and x2. Filters use the nominal spread, so the candidate set is identical across the three.
+Read `reports/ops/O-002/cost-study.md`: `x0` is what the entry is worth before costs (for the
+`baseline` trigger it should be near zero), `cost R @x1` is the median friction as a fraction of the
+risk, and "Trigger minus baseline" is the effect of the pattern at each cost level. The per-run
+reports also show `stop bps` and `cost R` per group. `edgebench run --jobs N` runs instruments in parallel.
