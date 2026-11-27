@@ -21,7 +21,7 @@ def test_repository_configs_are_valid_and_consistent() -> None:
 
 def test_placeholders_are_reported_until_confirmed() -> None:
     items = unconfirmed_items(load_all(CONFIG_DIR))
-    assert any("instrument GBPUSD" in item for item in items)
+    assert any("instrument XAUUSD" in item for item in items)
     assert any("session london" in item for item in items)
 
 

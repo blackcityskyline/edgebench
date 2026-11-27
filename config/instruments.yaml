@@ -1,3 +1,9 @@
+# Costs come from the owner's venue tickets (2026-11-27): forex, XAU and US100 pay a fee of 0.35 bps of
+# notional and show a 0.002% spread; BTC and SOL pay 0.8 bps (BTC spread 0%, SOL 0.005%). Fees are assumed
+# to be charged on both sides (the ticket shows the opening fee). Absolute spreads are fixed at the
+# price level of the screenshots, so they are too wide for older, cheaper prices and too tight for
+# higher ones. XAUUSD: spread was hidden on the screenshot (0.002% assumed). ETHUSDT and TONUSDT were
+# not shown: they reuse the crypto fee and stay placeholders.
 # PLACEHOLDER costs. Replace with values measured from ask/bid candles or broker statements,
 # then set placeholder: false. Dukascopy ids were confirmed by the 2026-11-24 download; point sizes for non-forex instruments still need a price check.
 instruments:
@@ -6,16 +12,16 @@ instruments:
     # assumed charged on close too), est. price deviation 0.001%. Dukascopy measured spread ~3e-5, used here.
     {source: dukascopy, symbol: eurusd, tick_size: 0.00001, spread: 0.00003, slippage_spreads: 0.5, commission_bps: 0.35, placeholder: false}
   GBPUSD:
-    {source: dukascopy, symbol: gbpusd, tick_size: 0.00001, spread: 0.00012, slippage_spreads: 0.5, placeholder: true}
+    {source: dukascopy, symbol: gbpusd, tick_size: 0.00001, spread: 0.00003, slippage_spreads: 0.5, commission_bps: 0.35, placeholder: false}
   XAUUSD:
-    {source: dukascopy, symbol: xauusd, tick_size: 0.001, spread: 0.35, slippage_spreads: 0.5, placeholder: true}
+    {source: dukascopy, symbol: xauusd, tick_size: 0.001, spread: 0.07, slippage_spreads: 0.5, commission_bps: 0.35, placeholder: true}
   US100:
-    {source: dukascopy, symbol: usatechidxusd, tick_size: 0.001, spread: 1.5, slippage_spreads: 0.5, placeholder: true}
+    {source: dukascopy, symbol: usatechidxusd, tick_size: 0.001, spread: 0.55, slippage_spreads: 0.5, commission_bps: 0.35, placeholder: false}
   BTCUSDT:
-    {source: binance, symbol: BTCUSDT, tick_size: 0.01, spread: 0.1, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+    {source: binance, symbol: BTCUSDT, tick_size: 0.01, spread: 0.1, slippage_spreads: 0.5, commission_bps: 0.8, placeholder: false}
   ETHUSDT:
-    {source: binance, symbol: ETHUSDT, tick_size: 0.01, spread: 0.01, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+    {source: binance, symbol: ETHUSDT, tick_size: 0.01, spread: 0.01, slippage_spreads: 0.5, commission_bps: 0.8, placeholder: true}
   SOLUSDT:
-    {source: binance, symbol: SOLUSDT, tick_size: 0.01, spread: 0.01, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+    {source: binance, symbol: SOLUSDT, tick_size: 0.01, spread: 0.005, slippage_spreads: 0.5, commission_bps: 0.8, placeholder: false}
   TONUSDT:
-    {source: binance, symbol: TONUSDT, tick_size: 0.001, spread: 0.001, slippage_spreads: 0.5, commission_bps: 10, placeholder: true}
+    {source: binance, symbol: TONUSDT, tick_size: 0.001, spread: 0.001, slippage_spreads: 0.5, commission_bps: 0.8, placeholder: true}
