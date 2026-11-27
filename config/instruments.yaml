@@ -2,7 +2,9 @@
 # then set placeholder: false. Dukascopy ids were confirmed by the 2026-11-24 download; point sizes for non-forex instruments still need a price check.
 instruments:
   EURUSD:
-    {source: dukascopy, symbol: eurusd, tick_size: 0.00001, spread: 0.00008, slippage_spreads: 0.5, placeholder: true}
+    # EURUSD: owner's demo venue ticket 2026-11-27 (London): spread 0.002%, fee 0.35 bps of notional (shown on open;
+    # assumed charged on close too), est. price deviation 0.001%. Dukascopy measured spread ~3e-5, used here.
+    {source: dukascopy, symbol: eurusd, tick_size: 0.00001, spread: 0.00003, slippage_spreads: 0.5, commission_bps: 0.35, placeholder: false}
   GBPUSD:
     {source: dukascopy, symbol: gbpusd, tick_size: 0.00001, spread: 0.00012, slippage_spreads: 0.5, placeholder: true}
   XAUUSD:
