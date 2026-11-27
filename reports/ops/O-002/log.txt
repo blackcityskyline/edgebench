@@ -1,0 +1,31 @@
+
+=== gates [2026-11-27T06:10:12+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli gates --quick
+PASS  G1 lint and format
+SKIP  G2  (not part of --quick)
+PASS  G3 unit tests
+SKIP  G4  (not part of --quick)
+SKIP  G5  (not part of --quick)
+PASS  G6 config schema  (1 strategy file(s))
+SKIP  G7 protected paths  (not a worker branch (agent/*))
+PASS  G8 repo hygiene
+gates: ok (SKIP is not PASS)
+--- exit 0, 88.1s
+
+=== data_verify [2026-11-27T06:10:19+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data verify
+store verified
+--- exit 0, 7.1s
+
+=== spreads [2026-11-27T06:10:21+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli data spreads
+dukascopy/eurusd: n=1488580 median=3e-05 p25=2e-05 p75=5e-05 p95=9e-05
+  median by UTC hour: 00:3e-05 01:3e-05 02:3e-05 03:3e-05 04:3e-05 05:3e-05 06:3e-05 07:3e-05 08:3e-05 09:3e-05 10:3e-05 11:3e-05 12:3e-05 13:3e-05 14:3e-05 15:3e-05 16:3e-05 17:3e-05 18:3e-05 19:3e-05 20:3e-05 21:0.00014 22:7e-05 23:4e-05
+--- exit 0, 1.9s
+
+=== cost0 [2026-11-27T06:19:33+00:00] $ /home/black/dev/me/edgebench/.venv/bin/python3 -m edgebench.cli run --strategy strategy_v1 --instruments EURUSD,BTCUSDT,ETHUSDT,SOLUSDT,TONUSDT --cost-mult 0
+EURUSD: dukascopy/eurusd (dev): events 6435, candidates 817, trades 814
+BTCUSDT: binance/BTCUSDT (dev): events 9718, candidates 6704, trades 6704
+ETHUSDT: binance/ETHUSDT (dev): events 9836, candidates 7195, trades 7195
+SOLUSDT: binance/SOLUSDT (dev): events 9321, candidates 5860, trades 5860
+TONUSDT: binance/TONUSDT (dev): events 4082, candidates 1564, trades 1564
+report: <repo>/runs/ed2b99a498963f20/report.md
+tables: <repo>/data/runs/ed2b99a498963f20
+--- exit 0, 552.9s

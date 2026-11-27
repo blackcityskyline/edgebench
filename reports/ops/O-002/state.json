@@ -1,0 +1,32 @@
+{
+  "current": "cost0",
+  "started": "2026-11-27T06:08:43+00:00",
+  "state": "running",
+  "steps": {
+    "cost0": {
+      "at": "2026-11-27T06:19:33+00:00",
+      "returncode": 0,
+      "seconds": 552.9,
+      "status": "ok"
+    },
+    "data_verify": {
+      "at": "2026-11-27T06:10:19+00:00",
+      "returncode": 0,
+      "seconds": 7.1,
+      "status": "ok"
+    },
+    "gates": {
+      "at": "2026-11-27T06:10:12+00:00",
+      "returncode": 0,
+      "seconds": 88.1,
+      "status": "ok"
+    },
+    "spreads": {
+      "at": "2026-11-27T06:10:21+00:00",
+      "returncode": 0,
+      "seconds": 1.9,
+      "status": "ok"
+    }
+  },
+  "updated": "2026-11-27T06:19:33+00:00"
+}
