@@ -1,0 +1,10 @@
+EURUSD: dukascopy/eurusd (dev): events 6435, candidates 3635, trades 3630
+GBPUSD: dukascopy/gbpusd (dev): events 6502, candidates 4272, trades 4256
+XAUUSD: dukascopy/xauusd (dev): events 5536, candidates 4096, trades 4093
+US100: dukascopy/usatechidxusd (dev): events 5062, candidates 3704, trades 3702
+BTCUSDT: binance/BTCUSDT (dev): events 9718, candidates 6704, trades 6704
+ETHUSDT: binance/ETHUSDT (dev): events 9836, candidates 7195, trades 7195
+SOLUSDT: binance/SOLUSDT (dev): events 9321, candidates 6645, trades 6645
+TONUSDT: binance/TONUSDT (dev): events 4082, candidates 1564, trades 1564
+report: <repo>/runs/8f9b9f0fa29c99ed/report.md
+tables: <repo>/data/runs/8f9b9f0fa29c99ed

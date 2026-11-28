@@ -1,0 +1,9 @@
+PASS  G1 lint and format
+SKIP  G2  (not part of --quick)
+PASS  G3 unit tests
+SKIP  G4  (not part of --quick)
+SKIP  G5  (not part of --quick)
+PASS  G6 config schema  (1 strategy file(s))
+SKIP  G7 protected paths  (not a worker branch (agent/*))
+PASS  G8 repo hygiene
+gates: ok (SKIP is not PASS)

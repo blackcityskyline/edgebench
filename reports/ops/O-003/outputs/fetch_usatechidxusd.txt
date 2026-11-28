@@ -1,0 +1,32 @@
+USATECHIDXUSD BID: 100/1461 (0.6/s) {'ok': 97, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 200/1461 (1.0/s) {'ok': 197, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 300/1461 (1.4/s) {'ok': 297, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 400/1461 (1.6/s) {'ok': 397, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 500/1461 (1.8/s) {'ok': 497, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 600/1461 (2.1/s) {'ok': 597, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 700/1461 (2.1/s) {'ok': 697, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 800/1461 (2.2/s) {'ok': 797, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 900/1461 (2.3/s) {'ok': 897, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 1000/1461 (2.5/s) {'ok': 997, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 1100/1461 (2.4/s) {'ok': 1097, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 1200/1461 (2.2/s) {'ok': 1197, 'cached': 0, 'missing': 0, 'failed': 3}
+USATECHIDXUSD BID: 1300/1461 (1.9/s) {'ok': 1295, 'cached': 0, 'missing': 0, 'failed': 5}
+USATECHIDXUSD BID: 1400/1461 (2.0/s) {'ok': 1395, 'cached': 0, 'missing': 0, 'failed': 5}
+USATECHIDXUSD BID: 1461/1461 (2.0/s) {'ok': 1456, 'cached': 0, 'missing': 0, 'failed': 5}
+USATECHIDXUSD BID: 1456 day files -> data/raw/dukascopy/usatechidxusd-bid/m1.csv
+USATECHIDXUSD ASK: 100/1461 (2.5/s) {'ok': 100, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 200/1461 (3.4/s) {'ok': 200, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 300/1461 (3.8/s) {'ok': 300, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 400/1461 (3.2/s) {'ok': 400, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 500/1461 (2.8/s) {'ok': 500, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 600/1461 (2.7/s) {'ok': 600, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 700/1461 (2.2/s) {'ok': 700, 'cached': 0, 'missing': 0, 'failed': 0}
+USATECHIDXUSD ASK: 800/1461 (1.9/s) {'ok': 799, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 900/1461 (2.1/s) {'ok': 899, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1000/1461 (2.2/s) {'ok': 999, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1100/1461 (2.3/s) {'ok': 1099, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1200/1461 (2.4/s) {'ok': 1199, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1300/1461 (2.5/s) {'ok': 1299, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1400/1461 (2.3/s) {'ok': 1399, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1461/1461 (2.2/s) {'ok': 1460, 'cached': 0, 'missing': 0, 'failed': 1}
+USATECHIDXUSD ASK: 1460 day files -> data/raw/dukascopy/usatechidxusd-ask/m1.csv
