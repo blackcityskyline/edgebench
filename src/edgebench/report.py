@@ -93,6 +93,83 @@ def _baseline_rows(df: pd.DataFrame, ks: list[float], seed: int) -> list[list[st
     return rows
 
 
+BE_PAIRS = ((1.0, 3.0), (1.0, 5.0), (1.0, 10.0), (2.0, 5.0), (2.0, 10.0), (2.0, 15.0))
+BE_HEADLINE = (1.0, 5.0)
+BE_HEADER = [
+    "cell", "n", "armed", "BE exits", "killed winners", "saved losers", "open",
+    "E[R] no BE", "E[R] with BE", "BE minus no BE",
+]  # fmt: skip
+
+
+def _pct(n: int, d: int) -> str:
+    return "-" if d == 0 else f"{100 * n / d:.0f}% ({n})"
+
+
+def _be_row(label: str, g: pd.DataFrame, b: float, k: float, seed: int) -> list[str] | None:
+    kb, kt = rung_key(b), rung_key(k)
+    cls, r_be, r_base = f"be{kb}_c_{kt}", f"be{kb}_r_{kt}", f"r_{kt}"
+    if cls not in g or len(g) < MIN_N:
+        return None
+    armed = int((g[cls] != "none").sum())
+    kill = int((g[cls] == "be_winner").sum())
+    save = int((g[cls] == "be_loser").sum())
+    keep = int((g[cls] == "be_open").sum())
+    be = kill + save + keep
+    delta = day_bootstrap_mean(g[r_be] - g[r_base], g["day"], seed=seed)
+    return [
+        label, str(len(g)), _pct(armed, len(g)), _pct(be, armed), _pct(kill, be), _pct(save, be),
+        _pct(keep, be), _fmt(day_bootstrap_mean(g[r_base], g["day"], seed=seed)),
+        _fmt(day_bootstrap_mean(g[r_be], g["day"], seed=seed)), _fmt(delta),
+    ]  # fmt: skip
+
+
+def _be_section(df: pd.DataFrame, seed: int) -> list[str]:
+    """Break-even statistics: how often it arms, and what the exits it causes would have become."""
+    traded = df[df["traded"]]
+    pairs = [(b, k) for b, k in BE_PAIRS if f"be{rung_key(b)}_c_{rung_key(k)}" in traded]
+    if not pairs or traded.empty:
+        return []
+    by_trigger = []
+    for trig in sorted(set(traded["trigger"])):
+        for b, k in pairs:
+            row = _be_row(
+                f"{trig} BE@{rung_key(b)}R -> {rung_key(k)}R",
+                traded[traded["trigger"] == trig],
+                b,
+                k,
+                seed,
+            )
+            if row:
+                by_trigger.append(row)
+    hb, hk = BE_HEADLINE if BE_HEADLINE in pairs else pairs[0]
+    by_inst = []
+    for inst in sorted(set(traded["instrument"])):
+        for trig in sorted(set(traded["trigger"])):
+            g = traded[(traded["instrument"] == inst) & (traded["trigger"] == trig)]
+            row = _be_row(f"{inst} / {trig}", g, hb, hk, seed)
+            if row:
+                by_inst.append(row)
+    return [
+        "",
+        "## Break-even",
+        "",
+        "The stop moves to the entry fill once the trigger (BE@bR) is reached, from the next bar "
+        "on. `armed`: share of trades that reached the trigger. `BE exits`: share of armed trades "
+        "that "
+        "later traded back to the entry. Of those, `killed winners` would have reached the target "
+        "next (break-even cost the win), `saved losers` would have met the original stop "
+        "(break-even saved the loss), `open` met neither before the time limit. `BE minus no BE` "
+        "is the mean difference in net R per trade (positive: break-even helped) with a "
+        "day-block interval.",
+        "",
+        _table(BE_HEADER, by_trigger),
+        "",
+        f"By instrument and trigger for BE@{rung_key(hb)}R -> {rung_key(hk)}R:",
+        "",
+        _table(BE_HEADER, by_inst),
+    ]
+
+
 def _half(iv: Interval) -> Interval:
     return replace(iv, mean=iv.mean / 2, lo=iv.lo / 2, hi=iv.hi / 2)
 
@@ -173,6 +250,7 @@ def build_report(
                 _baseline_rows(df, ks, seed),
             ),
         ]
+    parts += _be_section(df, seed)
     if {"baseline", "mirror"} <= set(df["trigger"]):
         parts += [
             "",

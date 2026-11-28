@@ -148,3 +148,23 @@ def test_context_section_splits_zone_effect_from_artifact() -> None:
     effect = next(ln for ln in section.splitlines() if ln.startswith("| all zone effect"))
     artifact = next(ln for ln in section.splitlines() if ln.startswith("| all artifact"))
     assert "+0.500" in effect and "+0.000" in artifact
+
+
+def test_break_even_section_counts_killed_winners_and_saved_losers() -> None:
+    frame = synthetic_frame()
+    classes = ["none", "target", "be_winner", "be_loser", "be_loser", "stop"]
+    cls = [classes[i % len(classes)] for i in range(len(frame))]
+    frame = frame.assign(**{"be1_c_5": cls})
+    be = frame["be1_c_5"].str.startswith("be_")
+    frame["be1_r_5"] = frame["r_5"].where(~be, -0.1)
+    text = build_report(
+        {"EURUSD": frame},
+        RunMeta("a", "s", "c" * 64, "d" * 64, "x", "dev", 1.0, ["EURUSD"], 1, [], {}),
+        LADDER,
+    )
+    section = text.split("## Break-even")[1].split("\n## ")[0]
+    row = next(ln for ln in section.splitlines() if ln.startswith("| good BE@1R -> 5R"))
+    cells = [c.strip() for c in row.split("|")]
+    assert cells[3].startswith("83%")  # armed: all but "none"
+    assert cells[4].startswith("60%")  # BE exits among armed: 3 of 5
+    assert cells[5].startswith("33%") and cells[6].startswith("67%")  # 1 winner, 2 losers of 3

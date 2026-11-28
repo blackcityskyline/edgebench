@@ -7,6 +7,11 @@ stop (pessimistic, or for the targets with ``target_first``, the optimistic boun
 increments ``ambiguous_bars``. The stored ``Trade`` is the *reference exit*:
 a fixed target at ``reference_r`` (it wins if its rung was reached before the stop), else the stop,
 else a timeout. Other exit policies are computed from the ladder.
+
+Break-even: for every trigger rung in ``be_triggers_r`` the simulation also records the first bar,
+after the bar that reached the rung, whose range trades back to the entry fill (where the stop
+would sit), with the fill of that exit. The original path keeps running to its own end, so for a
+break-even exit it is known afterwards whether the target or the original stop came next.
 """
 
 from __future__ import annotations
@@ -34,8 +39,12 @@ class TradeSim:
         reference_r: float,
         max_hold_minutes: int,
         target_first: bool = False,
+        be_triggers_r: tuple[float, ...] = (),
     ) -> None:
         self.trade_id = trade_id
+        self._be_triggers = be_triggers_r
+        self._be_ts: dict[float, datetime] = {}
+        self._be_fill: dict[float, float] = {}
         self._target_first = target_first
         self.side = side
         self._costs = costs
@@ -75,6 +84,16 @@ class TradeSim:
         if bar.ts_open >= self._deadline:
             return self._finish_timeout()
         costs = self._costs
+        for b in self._be_triggers:  # armed on an earlier bar; a bar cannot arm and trigger
+            armed = self._reached.get(b)
+            if (
+                b not in self._be_ts
+                and armed is not None
+                and armed < bar.ts_close
+                and fills.stop_triggered(self.side, bar, self.entry_fill, costs)
+            ):
+                self._be_ts[b] = bar.ts_close
+                self._be_fill[b] = fills.stop_fill(self.side, bar, self.entry_fill, costs)
         hit_stop = fills.stop_triggered(self.side, bar, self._stop, costs)
         new = [
             r
@@ -149,6 +168,16 @@ class TradeSim:
         ladder: dict[str, datetime | None] = {"stop": self._stop_ts}
         for r in self._ladder_r:
             ladder[rung_key(r)] = self._reached.get(r)
+        be_ts: dict[str, datetime | None] = {}
+        be_r: dict[str, float | None] = {}
+        for b in self._be_triggers:
+            be_ts[rung_key(b)] = self._be_ts.get(b)
+            fill = self._be_fill.get(b)
+            be_r[rung_key(b)] = (
+                None
+                if fill is None
+                else (fill - self.entry_fill) * self.side.sign / self.risk - commission
+            )
         self.trade = Trade(
             trade_id=self.trade_id,
             side=self.side,
@@ -168,5 +197,7 @@ class TradeSim:
             commission_r=commission,
             stop_r=stop_r,
             timeout_r=timeout_r,
+            be_ts=be_ts,
+            be_r=be_r,
         )
         return self.trade

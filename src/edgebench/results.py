@@ -29,6 +29,38 @@ def fixed_r(trade: Trade, k: float) -> float:
     return trade.timeout_r
 
 
+def be_outcome(trade: Trade, b: float, k: float, target_first: bool = False) -> tuple[float, str]:
+    """Net R and class of 'target at kR, break-even stop once bR was reached'.
+
+    Classes: ``none`` (never armed: the same as without break-even), ``target`` (the target came
+    before price returned to the entry), ``stop`` and ``timeout`` (armed, but the original path
+    ended at the stop or timeout without a break-even exit, e.g. the arming bar itself hit the
+    stop), and the break-even exits split by what the *original* stop would have met next:
+    ``be_winner`` (the target: break-even cost a winner), ``be_loser`` (the original stop:
+    break-even saved a loss), ``be_open`` (neither before the time limit).
+    A bar that trades back to the entry and reaches the target counts for the break-even unless
+    ``target_first``.
+    """
+    kb, kt = rung_key(b), rung_key(k)
+    base = fixed_r(trade, k)
+    if trade.ladder.get(kb) is None:
+        return base, "none"
+    reached, be_ts = trade.ladder.get(kt), trade.be_ts.get(kb)
+    be_r = trade.be_r.get(kb)
+    be_first = be_ts is not None and be_r is not None
+    if be_first and reached is not None:
+        assert be_ts is not None
+        be_first = be_ts < reached or (be_ts == reached and not target_first)
+    if be_first:
+        assert be_r is not None
+        if reached is not None:
+            return be_r, "be_winner"
+        return be_r, "be_loser" if trade.ladder.get("stop") is not None else "be_open"
+    if reached is not None:
+        return base, "target"
+    return base, "stop" if trade.ladder.get("stop") is not None else "timeout"
+
+
 def _zone_parts(zone_id: str) -> tuple[str, str]:
     parts = zone_id.split(":")
     return parts[1], parts[2]
@@ -45,7 +77,13 @@ def _zone_columns(out: RunOutput, zone_id: str) -> dict[str, object]:
     }
 
 
-def candidate_frame(out: RunOutput, instrument: str, ladder_r: list[float]) -> pd.DataFrame:
+def candidate_frame(
+    out: RunOutput,
+    instrument: str,
+    ladder_r: list[float],
+    be_triggers_r: list[float] | tuple[float, ...] = (),
+    target_first: bool = False,
+) -> pd.DataFrame:
     events = {e.event_id: e for e in out.events}
     zones = {z.zone_id: z for z in out.zones}
     trades = {t.trade_id: t for t in out.trades}
@@ -92,6 +130,14 @@ def candidate_frame(out: RunOutput, instrument: str, ladder_r: list[float]) -> p
             key = rung_key(k)
             row[f"r_{key}"] = fixed_r(trade, k) if trade else nan
             row[f"hit_{key}"] = (trade.ladder.get(key) is not None) if trade else False
+        for b in be_triggers_r:
+            for k in (k for k in ladder_r if k > b):
+                if trade:
+                    r_be, cls = be_outcome(trade, b, k, target_first)
+                else:
+                    r_be, cls = nan, "none"
+                row[f"be{rung_key(b)}_r_{rung_key(k)}"] = r_be
+                row[f"be{rung_key(b)}_c_{rung_key(k)}"] = cls
         rows.append(row)
     return pd.DataFrame(rows)
 

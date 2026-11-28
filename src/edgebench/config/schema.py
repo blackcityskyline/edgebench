@@ -139,6 +139,10 @@ class ExitsConfig(_Base):
     reference_r: float = Field(
         2.0, gt=0, description="Fixed-R target of the reference exit stored on every trade"
     )
+    be_triggers_r: list[float] = Field(
+        default_factory=lambda: [1.0, 2.0],
+        description="Break-even stop studies: trigger rungs (each must be on the ladder)",
+    )
     ambiguity: Literal["stop_first", "target_first"] = Field(
         "stop_first",
         description="A bar that reaches a target and the stop: stop first (pessimistic, default) "
@@ -153,6 +157,12 @@ class ExitsConfig(_Base):
         if any(b <= a for a, b in zip(value, value[1:], strict=False)):
             raise ValueError("ladder_r must be strictly ascending")
         return value
+
+    @model_validator(mode="after")
+    def _be_on_ladder(self) -> ExitsConfig:
+        if any(b not in self.ladder_r for b in self.be_triggers_r):
+            raise ValueError("be_triggers_r values must be on ladder_r")
+        return self
 
     @model_validator(mode="after")
     def _reference_on_ladder(self) -> ExitsConfig:

@@ -60,3 +60,14 @@ data or the engine and should be near zero at cost x0. `strategy_v1_optimistic` 
 a target and the stop as the target (default is the stop); the two bracket the bar-level ambiguity.
 Task O-004 (`edgebench ops controls`) runs both. The cost study also lists E[R] for every target from
 1R to 15R, gross and net.
+
+## Break-even statistics
+
+Every run also simulates a break-even stop (`exits.be_triggers_r`, default 1R and 2R): once a trade has
+reached the trigger, the stop sits at the entry fill from the next bar on. The original path keeps
+running, so each break-even exit is classified by what the original stop and target did next. The
+report section "Break-even" shows, per trigger and per instrument: how many trades arm the break-even,
+how many of those come back to the entry, and of those the share that would have gone on to the target
+(`killed winners`), to the original stop (`saved losers`) or neither (`open`), and the net R with and
+without break-even with a day-block interval. The columns `be<b>_r_<k>` and `be<b>_c_<k>` in
+`candidates.parquet` hold the per-trade result for trigger b and target k.

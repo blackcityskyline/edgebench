@@ -73,6 +73,10 @@ class Trade:
     commission_r: float = 0.0
     stop_r: float | None = None  # net R if the simulation ended at the stop, else None
     timeout_r: float | None = None  # net R at the timeout, set only when the simulation timed out
+    # Break-even stop at the entry fill, armed once a trigger rung (key as in ``ladder``) has been
+    # reached: the time a later bar first trades back to the entry, and the net R of that exit.
+    be_ts: dict[str, datetime | None] = field(default_factory=dict)
+    be_r: dict[str, float | None] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         require_utc(self.entry_ts, "entry_ts")

@@ -168,6 +168,7 @@ class Engine:
                     list(self._cfg.exits.ladder_r), self._cfg.exits.reference_r,
                     self._cfg.exits.max_hold_minutes,
                     self._cfg.exits.ambiguity == "target_first",
+                    tuple(self._cfg.exits.be_triggers_r),
                 )  # fmt: skip
             except ValueError:
                 self._counts["rejected_gap_through_stop"] += 1

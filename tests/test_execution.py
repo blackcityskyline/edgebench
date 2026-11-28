@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from edgebench.config.environment import InstrumentSpec
-from edgebench.contracts import Bar, ExitReason, Side
+from edgebench.contracts import Bar, ExitReason, Side, Trade
 from edgebench.execution import CostModel, TradeSim, fills, rung_key
 
 T0 = datetime(2024, 1, 1, 10, 0, tzinfo=UTC)
@@ -211,3 +211,42 @@ def test_target_first_ambiguity_credits_the_rungs_of_the_stop_bar() -> None:
     assert trade is not None and trade.ambiguous_bars == 1
     assert trade.ladder["1"] is not None and trade.ladder["2"] is None
     assert trade.exit_reason is ExitReason.TARGET and trade.stop_r is not None
+
+
+def _be_trade(bars: list[Bar], target_first: bool = False) -> Trade:
+    s = TradeSim(
+        "t", Side.LONG, 99.2, bar(0, 100.0, 100.5, 99.5, 100.3), COSTS, [1, 2, 3], 2, 60,
+        target_first=target_first, be_triggers_r=(1.0,),
+    )  # fmt: skip
+    for b in bars:  # entry fill 100.2, risk 1.0, rung 1 at 101.2, rung 2 at 102.2, stop 99.2
+        s.update(b)
+    trade = s.flush()
+    assert trade is not None
+    return trade
+
+
+def test_break_even_exit_is_classified_by_what_the_original_path_did_next() -> None:
+    from edgebench.results import be_outcome
+
+    arm = bar(1, 100.6, 101.3, 100.5, 101.0)  # reaches +1R
+    back = bar(2, 100.6, 100.8, 100.1, 100.5)  # trades back to the entry fill 100.2
+    winner = _be_trade([arm, back, bar(3, 100.5, 102.4, 100.4, 102.0)])
+    r, cls = be_outcome(winner, 1.0, 2.0)
+    assert cls == "be_winner" and abs(r - (-0.1)) < 1e-9  # BE fill 100.1: slippage only
+    loser = _be_trade([arm, back, bar(3, 100.5, 100.6, 99.0, 99.1)])
+    assert be_outcome(loser, 1.0, 2.0)[1] == "be_loser"
+    assert be_outcome(loser, 1.0, 2.0)[0] == be_outcome(winner, 1.0, 2.0)[0]
+    clean = _be_trade([arm, bar(2, 101.0, 102.4, 100.9, 102.0)])
+    assert be_outcome(clean, 1.0, 2.0) == (2.0, "target")
+    unarmed = _be_trade([bar(1, 100.2, 100.9, 99.0, 99.1)])
+    assert be_outcome(unarmed, 1.0, 2.0)[1] == "none"
+    assert be_outcome(unarmed, 1.0, 2.0)[0] == unarmed.stop_r
+
+
+def test_break_even_and_target_in_one_bar_follow_the_ambiguity_rule() -> None:
+    from edgebench.results import be_outcome
+
+    arm = bar(1, 100.6, 101.3, 100.5, 101.0)
+    both = bar(2, 100.6, 102.4, 100.1, 102.0)  # returns to the entry and reaches +2R
+    assert be_outcome(_be_trade([arm, both]), 1.0, 2.0)[1] == "be_winner"
+    assert be_outcome(_be_trade([arm, both], target_first=True), 1.0, 2.0, True)[1] == "target"

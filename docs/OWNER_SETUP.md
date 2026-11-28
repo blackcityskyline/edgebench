@@ -48,3 +48,11 @@ bps, about 20R). Price reached the H1 target area within about two hours (a spik
 The setup is: price arrives at the H1 zone, stalls, goes sideways in the zone, sweeps, and the M1
 micro-stop is placed beyond the local extreme. The two screenshots (M1 with the trade, and the H1
 context with zones) are with the owner.
+
+## Break-even
+
+The owner moves the stop to break-even in some trades. Implemented as a study, not a policy: the
+simulation records, for triggers at 1R and 2R, the first bar after arming that trades back to the
+entry fill, and classifies each break-even exit by what the original path met next (target: break-even
+cost the win; original stop: break-even saved the loss). Open question for the owner: where the
+break-even trigger sits in practice (a fixed R, a structural level, or after the first reaction).
