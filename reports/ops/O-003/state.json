@@ -1,5 +1,5 @@
 {
-  "current": "cost1",
+  "current": "cost2",
   "started": "2026-11-27T21:13:55+00:00",
   "state": "running",
   "steps": {
@@ -12,8 +12,15 @@
     },
     "cost1": {
       "at": "2026-11-28T06:58:32+00:00",
+      "git": "pushed",
       "returncode": 0,
       "seconds": 375.8,
+      "status": "ok"
+    },
+    "cost2": {
+      "at": "2026-11-28T07:05:01+00:00",
+      "returncode": 0,
+      "seconds": 386.1,
       "status": "ok"
     },
     "data_info": {
@@ -95,5 +102,5 @@
       "status": "ok"
     }
   },
-  "updated": "2026-11-28T06:58:32+00:00"
+  "updated": "2026-11-28T07:05:01+00:00"
 }
