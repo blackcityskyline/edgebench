@@ -7,7 +7,7 @@ because picking the best of many is how noise gets promoted to an edge.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import pandas as pd
 
@@ -93,6 +93,34 @@ def _baseline_rows(df: pd.DataFrame, ks: list[float], seed: int) -> list[list[st
     return rows
 
 
+def _half(iv: Interval) -> Interval:
+    return replace(iv, mean=iv.mean / 2, lo=iv.lo / 2, hi=iv.hi / 2)
+
+
+def _context_rows(df: pd.DataFrame, ks: list[float], seed: int) -> list[list[str]]:
+    """Split the control's gross result into a zone effect and a data/engine artifact.
+
+    With baseline = ``c + a`` and mirror = ``-c + a`` (``c``: what trading with the zone earns,
+    ``a``: what any entry earns from the data or the engine), ``c = (baseline - mirror) / 2`` and
+    ``a = (baseline + mirror) / 2``.
+    """
+    rows: list[list[str]] = []
+    groups = [("all", df)] + [(str(i), g) for i, g in df.groupby("instrument")]
+    for name, g in groups:
+        b, m = g[g["trigger"] == "baseline"], g[g["trigger"] == "mirror"]
+        for label, sign in (("zone effect", 1.0), ("artifact", -1.0)):
+            row = [f"{name} {label}", str(len(b)), str(len(m))]
+            for k in ks:
+                key = f"r_{rung_key(k)}"
+                if len(b) < MIN_N or len(m) < MIN_N:
+                    row.append("n<30")
+                else:
+                    iv = day_bootstrap_diff(b[key], b["day"], sign * m[key], m["day"], seed=seed)
+                    row.append(_fmt(_half(iv)))
+            rows.append(row)
+    return rows
+
+
 def build_report(
     frames: dict[str, pd.DataFrame], meta: RunMeta, ladder_r: list[float], seed: int = 0
 ) -> str:
@@ -143,6 +171,21 @@ def build_report(
             _table(
                 ["trigger", "n", "n baseline", *[f"diff @{rung_key(k)}R" for k in ks]],
                 _baseline_rows(df, ks, seed),
+            ),
+        ]
+    if {"baseline", "mirror"} <= set(df["trigger"]):
+        parts += [
+            "",
+            "## Zone effect vs artifact (baseline against its mirror)",
+            "",
+            "The mirror takes the baseline's bars in the opposite direction. `zone effect` is "
+            "(baseline - mirror) / 2: what trading with the zone earns. `artifact` is "
+            "(baseline + mirror) / 2: what any entry earns from the data or the engine; it should "
+            "be near zero when costs are off (x0).",
+            "",
+            _table(
+                ["cell", "n baseline", "n mirror", *[f"@{rung_key(k)}R" for k in ks]],
+                _context_rows(df, ks, seed),
             ),
         ]
     for title, col in (
@@ -238,6 +281,37 @@ def build_cost_study(
             "## Trigger minus baseline",
             "",
             _table(["cell", *[f"x{m:g}" for m in mults]], drows),
+        ]
+    ks = sorted(
+        float(c[2:])
+        for c in base.columns
+        if c.startswith("r_") and c[2:].replace(".", "").isdigit()
+    )
+    for m in (0.0, 1.0):
+        if m not in traded or len(ks) < 2:
+            continue
+        label = "gross, no costs" if m == 0 else f"net, costs x{m:g}"
+        prows = []
+        for name, fn in [
+            ("all / " + t, lambda d, t=t: d[d["trigger"] == t])
+            for t in sorted(set(base["trigger"]))
+        ] + [
+            (f"{i} / {t}", lambda d, i=i, t=t: d[(d["instrument"] == i) & (d["trigger"] == t)])
+            for i in sorted(set(base["instrument"]))
+            for t in sorted(set(base["trigger"]))
+        ]:
+            g = fn(traded[m])
+            if len(g) < MIN_N:
+                continue
+            prows.append(
+                [name, str(len(g))]
+                + [_fmt(day_bootstrap_mean(g[f"r_{rung_key(k)}"], g["day"], seed=seed)) for k in ks]
+            )
+        parts += [
+            "",
+            f"## E[R] by target ({label})",
+            "",
+            _table(["cell", "n", *[f"@{rung_key(k)}R" for k in ks]], prows),
         ]
     if 1.0 in traded and "candidate_id" in base:
         edges = [0.0, 0.1, 0.2, 0.5, float("inf")]

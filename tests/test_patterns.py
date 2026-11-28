@@ -300,3 +300,18 @@ def test_baseline_is_deterministic_and_close_to_its_probability() -> None:
         BaselineDetector(BaselineConfig(enabled=True, probability=1.0)), rows[:1], Direction.BEAR
     )
     assert bear[0][1].refs["extreme"] == 101.5
+
+
+def test_mirror_takes_the_baseline_bars_in_the_opposite_direction() -> None:
+    from edgebench.config.schema import BaselineConfig
+    from edgebench.patterns import BaselineDetector, MirrorDetector
+
+    rows: list[Row] = [(101.0, 101.5, 100.5, 101.2)] * 500
+    cfg = BaselineConfig(enabled=True, probability=0.2, mirror=True)
+    base = run(BaselineDetector(cfg), rows)
+    mirror = run(MirrorDetector(cfg), rows)
+    assert [i for i, _ in base] == [i for i, _ in mirror] and base
+    assert base[0][1].direction is Direction.BULL and mirror[0][1].direction is Direction.BEAR
+    assert base[0][1].refs["extreme"] == 100.5 and mirror[0][1].refs["extreme"] == 101.5
+    bear = run(MirrorDetector(cfg), rows[:200], Direction.BEAR)
+    assert bear and bear[0][1].direction is Direction.BULL and bear[0][1].refs["extreme"] == 100.5

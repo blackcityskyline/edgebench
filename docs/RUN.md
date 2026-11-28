@@ -50,3 +50,13 @@ Read `reports/ops/O-002/cost-study.md`: `x0` is what the entry is worth before c
 `baseline` trigger it should be near zero), `cost R @x1` is the median friction as a fraction of the
 risk, and "Trigger minus baseline" is the effect of the pattern at each cost level. The per-run
 reports also show `stop bps` and `cost R` per group. `edgebench run --jobs N` runs instruments in parallel.
+
+## Controls
+
+`strategy_v1` also runs a `mirror` control next to `baseline`: the same random bars in the opposite
+direction. The report section "Zone effect vs artifact" reads: `zone effect` = (baseline - mirror) / 2 is
+what trading with the zone earns; `artifact` = (baseline + mirror) / 2 is what any entry earns from the
+data or the engine and should be near zero at cost x0. `strategy_v1_optimistic` counts a bar that reaches
+a target and the stop as the target (default is the stop); the two bracket the bar-level ambiguity.
+Task O-004 (`edgebench ops controls`) runs both. The cost study also lists E[R] for every target from
+1R to 15R, gross and net.

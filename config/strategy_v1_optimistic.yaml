@@ -1,0 +1,68 @@
+# Strategy v1 with the optimistic ambiguity rule (a bar that reaches a target and the stop counts the
+# target). Together with strategy_v1 (stop first) it brackets the effect of the bar-level ambiguity.
+# Strategy v1. Values are placeholders, not recommendations (docs/CONTRACT.md section 6).
+version: 1
+mode: shadow
+instruments: [EURUSD, GBPUSD, XAUUSD, US100, BTCUSDT, ETHUSDT, SOLUSDT, TONUSDT]
+sessions: [london, ny_am, crypto_evening]
+
+zones:
+  fvg:
+    enabled: true
+    min_size_atr_h1: 0.2
+    min_displacement_body_atr_h1: null
+    invalid_on: close_through
+    max_episodes: 1
+    max_age_h1_bars: 200
+  fractal:
+    enabled: true
+    left: 2
+    right: 2
+  episode_gap_bars: 5
+  window_bars: 30
+
+patterns:
+  sweep:
+    enabled: true
+    references: [h1_fractal, ltf_fractal_m1]
+    min_depth_atr_m1: 0.1
+    max_return_bars: 3
+  stall:
+    enabled: true
+    n_bars: 3
+    max_range_atr_m1: 0.5
+    max_extension_atr_m1: 0.1
+  rejection:
+    enabled: true
+    min_wick_ratio: 0.6
+    close_zone: 0.33
+  inside:
+    enabled: true
+    mode: range
+    min_count: 1
+  baseline:            # control: a random bar in the episode window, same stop rule
+    enabled: true
+    probability: 0.1
+    seed: 0
+    mirror: true         # control: the same bars, opposite direction
+
+entry:
+  triggers: [sweep, rejection, stall, inside, baseline, mirror]
+  combine: first
+  policy: market_next_open
+  limit_retrace_frac: 0.5
+  stop_buffer:
+    spreads: 1.0
+    atr_m1: 0.0
+  min_stop_spreads: 5
+  max_stop_atr_h1: 0.5
+  max_trades_per_zone: 1
+
+exits:
+  ambiguity: target_first
+  max_hold_minutes: 360
+  ladder_r: [1, 2, 3, 5, 8, 10, 15]
+  reference_r: 2
+
+risk:
+  risk_pct: 0.2

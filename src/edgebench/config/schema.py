@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-TriggerName = Literal["sweep", "rejection", "stall", "inside", "baseline"]
+TriggerName = Literal["sweep", "rejection", "stall", "inside", "baseline", "mirror"]
 SweepReference = Literal["zone_edge", "h1_fractal", "ltf_fractal_m1", "ltf_fractal_m3"]
 InvalidOn = Literal["close_through", "full_fill", "first_touch", "never"]
 
@@ -94,6 +94,10 @@ class BaselineConfig(_Base):
     enabled: bool = False
     probability: float = Field(0.1, gt=0, le=1, description="Per bar inside the window")
     seed: int = 0
+    mirror: bool = Field(
+        False,
+        description="Also run the 'mirror' control: the same random bars, opposite direction",
+    )
 
 
 class PatternsConfig(_Base):
@@ -135,6 +139,11 @@ class ExitsConfig(_Base):
     reference_r: float = Field(
         2.0, gt=0, description="Fixed-R target of the reference exit stored on every trade"
     )
+    ambiguity: Literal["stop_first", "target_first"] = Field(
+        "stop_first",
+        description="A bar that reaches a target and the stop: stop first (pessimistic, default) "
+        "or targets first (optimistic bound)",
+    )
 
     @field_validator("ladder_r")
     @classmethod
@@ -172,7 +181,10 @@ class StrategyConfig(_Base):
         if not (self.zones.fvg.enabled or self.zones.fractal.enabled):
             raise ValueError("enable at least one zone kind")
         for trigger in self.entry.triggers:
-            if not getattr(self.patterns, trigger).enabled:
+            if trigger == "mirror":
+                if not (self.patterns.baseline.enabled and self.patterns.baseline.mirror):
+                    raise ValueError("entry trigger 'mirror' needs patterns.baseline.mirror: true")
+            elif not getattr(self.patterns, trigger).enabled:
                 raise ValueError(f"entry trigger {trigger!r} is disabled in patterns")
         return self
 

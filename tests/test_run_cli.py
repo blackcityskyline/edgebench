@@ -18,12 +18,13 @@ ROOT = Path(__file__).resolve().parents[1]
 @pytest.fixture
 def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     shutil.copytree(ROOT / "config", tmp_path / "config")
+    (tmp_path / "config" / "strategy_v1_optimistic.yaml").unlink()  # the fixture edits only v1
     cfg = yaml.safe_load((tmp_path / "config" / "strategy_v1.yaml").read_text())
     cfg["instruments"] = ["EURUSD"]
     cfg["sessions"] = ["london"]
     cfg["entry"]["max_stop_atr_h1"] = 3.0
     cfg["entry"]["min_stop_spreads"] = 1.0
-    cfg["patterns"]["baseline"] = {"enabled": True, "probability": 0.2}  # also in strategy_v1
+    cfg["patterns"]["baseline"] = {"enabled": True, "probability": 0.2, "mirror": True}
     (tmp_path / "config" / "strategy_v1.yaml").write_text(yaml.safe_dump(cfg))
     sessions = {
         "tz": "America/New_York",
@@ -50,7 +51,12 @@ def test_run_writes_report_manifest_ledger_and_tables(
     run_dirs = [p for p in (repo / "runs").iterdir() if p.is_dir()]
     assert len(run_dirs) == 1
     report = (run_dirs[0] / "report.md").read_text()
-    assert "## By trigger" in report and "baseline" in report and "trials so far: 1" in report
+    assert (
+        "## By trigger" in report
+        and "baseline" in report
+        and "mirror" in report
+        and "trials so far: 1" in report
+    )
     manifest = json.loads((run_dirs[0] / "manifest.json").read_text())
     assert manifest["split"] == "dev" and manifest["instruments"] == ["EURUSD"]
     assert (repo / "data" / "runs" / run_dirs[0].name / "candidates.parquet").exists()

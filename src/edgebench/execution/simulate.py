@@ -3,7 +3,8 @@
 The simulation starts at the entry bar (fill at its open) and evaluates that bar too. It runs until
 the stop is hit, every ladder rung has been reached, or the holding limit passes, and records the
 time each rung was first reached. A bar that both reaches a rung and hits the stop counts for the
-stop (pessimistic) and increments ``ambiguous_bars``. The stored ``Trade`` is the *reference exit*:
+stop (pessimistic, or for the targets with ``target_first``, the optimistic bound) and
+increments ``ambiguous_bars``. The stored ``Trade`` is the *reference exit*:
 a fixed target at ``reference_r`` (it wins if its rung was reached before the stop), else the stop,
 else a timeout. Other exit policies are computed from the ladder.
 """
@@ -32,8 +33,10 @@ class TradeSim:
         ladder_r: list[float],
         reference_r: float,
         max_hold_minutes: int,
+        target_first: bool = False,
     ) -> None:
         self.trade_id = trade_id
+        self._target_first = target_first
         self.side = side
         self._costs = costs
         self._stop = stop_price
@@ -85,6 +88,9 @@ class TradeSim:
         if hit_stop:
             if new:
                 self._ambiguous += 1
+                if self._target_first:
+                    for r in new:
+                        self._reached[r] = bar.ts_close
             self._stop_ts = bar.ts_close
             self._stop_fill = fills.stop_fill(self.side, bar, self._stop, costs)
             self._mark_closed(bar.ts_close)

@@ -131,4 +131,20 @@ def test_cost_study_compares_multipliers_on_the_same_candidates() -> None:
     assert cells[0].startswith("+0.800") and cells[1].startswith("+0.500")
     assert cells[2].startswith("-0.100")
     assert "## Trigger minus baseline" in text
+    assert "## E[R] by target (gross, no costs)" in text and "## E[R] by target (net" in text
     assert "## By cost in R" in text and "<=0.1R / good" in text
+
+
+def test_context_section_splits_zone_effect_from_artifact() -> None:
+    base = synthetic_frame()
+    base = base[base["trigger"] == "good"].assign(trigger="baseline")  # +0.5R in the zone direction
+    mirror = base.assign(trigger="mirror", **{f"r_{k:g}": -0.5 for k in LADDER})  # loses 0.5R
+    text = build_report(
+        {"EURUSD": pd.concat([base, mirror])},
+        RunMeta("a", "s", "c" * 64, "d" * 64, "x", "dev", 1.0, ["EURUSD"], 1, [], {}),
+        LADDER,
+    )
+    section = text.split("## Zone effect vs artifact")[1].split("\n## ")[0]
+    effect = next(ln for ln in section.splitlines() if ln.startswith("| all zone effect"))
+    artifact = next(ln for ln in section.splitlines() if ln.startswith("| all artifact"))
+    assert "+0.500" in effect and "+0.000" in artifact

@@ -209,7 +209,9 @@ def write_status(repo: Path, task_id: str, state: str) -> None:
 # -- shared steps ------------------------------------------------------------------------------
 
 
-def _run_step(repo: Path, *extra: str) -> Callable[[Ctx], list[str] | None]:
+def _run_step(
+    repo: Path, *extra: str, strategy: str = "strategy_v1"
+) -> Callable[[Ctx], list[str] | None]:
     """A `run` over every strategy instrument that has data (looked up when the step starts, so
     data fetched by an earlier step counts); skipped when none has."""
 
@@ -217,7 +219,7 @@ def _run_step(repo: Path, *extra: str) -> Callable[[Ctx], list[str] | None]:
         inst = ",".join(available_instruments(repo))
         if not inst:
             return None
-        return ctx.cli("run", "--strategy", "strategy_v1", "--instruments", inst, *extra)
+        return ctx.cli("run", "--strategy", strategy, "--instruments", inst, *extra)
 
     return build
 
@@ -411,7 +413,10 @@ def fetch_steps(repo: Path) -> list[Step]:
     return steps
 
 
-def cost_study_steps(repo: Path, fetch: bool = False) -> list[Step]:
+OPTIMISTIC = (("opt0", 0.0), ("opt1", 1.0))
+
+
+def cost_study_steps(repo: Path, fetch: bool = False, optimistic: bool = False) -> list[Step]:
     steps = [Step("gates", lambda c: c.cli("gates", "--quick"))]
     if fetch:
         steps += fetch_steps(repo)
@@ -422,6 +427,10 @@ def cost_study_steps(repo: Path, fetch: bool = False) -> list[Step]:
     ]
     for name, mult in COST_MULTS:
         steps.append(Step(name, _run_step(repo, "--cost-mult", f"{mult:g}"), checkpoint=True))
+    if optimistic:
+        for name, mult in OPTIMISTIC:
+            run = _run_step(repo, "--cost-mult", f"{mult:g}", strategy="strategy_v1_optimistic")
+            steps.append(Step(name, run, checkpoint=True))
     return steps
 
 
@@ -457,6 +466,24 @@ def _cost_study_report(ctx: Ctx, state: dict[str, object], task_id: str) -> str:
             if src.exists():
                 shutil.copy(src, ctx.out_dir / f"run-{name}.md")
             out.append(f"\n`{name}`: run `{run_id}`, report `reports/ops/{task_id}/run-{name}.md`")
+    opt: dict[float, pd.DataFrame] = {}
+    for name, mult in OPTIMISTIC:
+        run_id = run_id_from(ctx.outputs.get(name, ""))
+        path = root / "runs" / (run_id or "-") / "candidates.parquet"
+        if run_id and path.exists():
+            opt[mult] = pd.read_parquet(path)
+            src = ctx.repo / "runs" / run_id / "report.md"
+            if src.exists():
+                shutil.copy(src, ctx.out_dir / f"run-{name}.md")
+            out.append(f"\n`{name}`: run `{run_id}`, report `reports/ops/{task_id}/run-{name}.md`")
+    if len(opt) == len(OPTIMISTIC):
+        text = build_cost_study(opt)
+        (ctx.out_dir / "cost-study-optimistic.md").write_text(text, encoding="utf-8")
+        out += [
+            "",
+            "Optimistic bound (a bar that reaches a target and the stop counts the target): "
+            f"`reports/ops/{task_id}/cost-study-optimistic.md`",
+        ]
     if len(frames) == len(COST_MULTS):
         text = build_cost_study(frames)
         (ctx.out_dir / "cost-study.md").write_text(text, encoding="utf-8")
@@ -479,6 +506,19 @@ def cmd_cost_study(args: argparse.Namespace, repo: Path) -> int:
         repo / "reports" / "ops" / "O-002",
         cost_study_report,
         "O-002",
+        args.force,
+        not args.no_push,
+    )
+
+
+def cmd_controls(args: argparse.Namespace, repo: Path) -> int:
+    """O-004: controls (mirror baseline, optimistic bound) on the venue costs."""
+    return execute(
+        cost_study_steps(repo, optimistic=True),
+        repo,
+        repo / "reports" / "ops" / "O-004",
+        cost_study_report_for("O-004"),
+        "O-004",
         args.force,
         not args.no_push,
     )
@@ -548,6 +588,12 @@ def register(
     expand.add_argument("--force", action="store_true", help="redo finished steps")
     expand.add_argument("--no-push", action="store_true", help="commit but do not push")
     expand.set_defaults(func=lambda a: cmd_expand(a, repo_root()))
+    controls = commands.add_parser(
+        "controls", help="O-004: mirror baseline and optimistic bound on venue costs"
+    )
+    controls.add_argument("--force", action="store_true", help="redo finished steps")
+    controls.add_argument("--no-push", action="store_true", help="commit but do not push")
+    controls.set_defaults(func=lambda a: cmd_controls(a, repo_root()))
     status = commands.add_parser("status", help="progress of a running pipeline")
     status.add_argument("task", nargs="?", default="O-001")
     status.set_defaults(func=lambda a: cmd_status(a, repo_root()))

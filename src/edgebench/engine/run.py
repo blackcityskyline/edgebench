@@ -167,6 +167,7 @@ class Engine:
                     intent.candidate_id, side, intent.stop_price, bar, self._costs,
                     list(self._cfg.exits.ladder_r), self._cfg.exits.reference_r,
                     self._cfg.exits.max_hold_minutes,
+                    self._cfg.exits.ambiguity == "target_first",
                 )  # fmt: skip
             except ValueError:
                 self._counts["rejected_gap_through_stop"] += 1

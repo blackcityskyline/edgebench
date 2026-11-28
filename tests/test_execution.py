@@ -200,3 +200,14 @@ def test_stop_and_timeout_returns_are_stored_for_other_exit_policies() -> None:
     trade = both.update(bar(2, 102.0, 102.1, 99.0, 99.5))  # then the stop, after the target
     assert trade is not None and trade.exit_reason is ExitReason.TARGET
     assert trade.r_net == pytest.approx(2.0) and trade.stop_r == pytest.approx(-1.1)
+
+
+def test_target_first_ambiguity_credits_the_rungs_of_the_stop_bar() -> None:
+    s = TradeSim(
+        "t", Side.LONG, 99.2, bar(0, 100.0, 100.5, 99.5, 100.3), COSTS, [1, 2, 3], 1, 60,
+        target_first=True,
+    )  # fmt: skip
+    trade = s.update(bar(1, 100.0, 101.5, 99.0, 100.0))  # rung 1 and the stop in one bar
+    assert trade is not None and trade.ambiguous_bars == 1
+    assert trade.ladder["1"] is not None and trade.ladder["2"] is None
+    assert trade.exit_reason is ExitReason.TARGET and trade.stop_r is not None

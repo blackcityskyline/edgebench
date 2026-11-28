@@ -42,9 +42,10 @@ patterns:
     enabled: true
     probability: 0.1
     seed: 0
+    mirror: true         # control: the same bars, opposite direction
 
 entry:
-  triggers: [sweep, rejection, stall, inside, baseline]
+  triggers: [sweep, rejection, stall, inside, baseline, mirror]
   combine: first
   policy: market_next_open
   limit_retrace_frac: 0.5

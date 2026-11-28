@@ -217,3 +217,21 @@ def test_fetch_steps_skip_stored_instruments_and_reject_a_wrong_price_scale(
     assert status["pricecheck_gbpusd"] == status["pricecheck_xauusd"] == "ok"
     assert status["pricecheck_usatechidxusd"] == "failed"
     assert "close first" in (out / "outputs" / "pricecheck_xauusd.txt").read_text()
+
+
+def test_controls_pipeline_adds_the_optimistic_bound(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from edgebench.ops import cost_study_report_for, cost_study_steps
+
+    shutil.copytree(ROOT / "config", repo / "config")
+    data = repo / "data"
+    monkeypatch.setenv("EDGEBENCH_DATA", str(data))
+    monkeypatch.setenv("EDGEBENCH_ROOT", str(repo))
+    write_m1(data, "dukascopy", "eurusd", make_m1(60 * 24 * 40, seed=3), "bid")
+    steps = [s for s in cost_study_steps(repo, optimistic=True) if s.name[:3] in ("cos", "opt")]
+    assert [s.name for s in steps] == ["cost0", "cost1", "cost2", "opt0", "opt1"]
+    out = repo / "reports" / "ops" / "O-004"
+    assert execute(steps, repo, out, cost_study_report_for("O-004"), "O-004", push=False) == 0
+    assert (out / "cost-study-optimistic.md").exists() and (out / "cost-study.md").exists()
+    assert "Zone effect vs artifact" in (out / "run-cost0.md").read_text()

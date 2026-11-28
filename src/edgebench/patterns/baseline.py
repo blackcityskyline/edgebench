@@ -34,3 +34,21 @@ class BaselineDetector:
             return []
         extreme = bar.low if ctx.direction is Direction.BULL else bar.high
         return [Observation(self.name, bar.ts_close, ctx.direction, refs={"extreme": extreme})]
+
+
+class MirrorDetector(BaselineDetector):
+    """The baseline's bars with the opposite direction (and the stop on the other side).
+
+    If the zone context carries an edge, the mirror should lose about as much as the baseline wins;
+    if both win, the gain comes from the data or the engine, not from the zone.
+    """
+
+    name = "mirror"
+
+    def on_bar(self, bar: Bar, ctx: PatternContext) -> list[Observation]:
+        if self._draw(bar, ctx) >= self._cfg.probability:
+            return []
+        bull = ctx.direction is Direction.BULL
+        flipped = Direction.BEAR if bull else Direction.BULL
+        extreme = bar.high if bull else bar.low
+        return [Observation(self.name, bar.ts_close, flipped, refs={"extreme": extreme})]

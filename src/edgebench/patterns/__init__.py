@@ -5,7 +5,7 @@ from __future__ import annotations
 from edgebench.config.schema import PatternsConfig
 from edgebench.contracts import Bar, Observation
 from edgebench.patterns.base import PatternContext, PatternDetector, pivot_levels
-from edgebench.patterns.baseline import BaselineDetector
+from edgebench.patterns.baseline import BaselineDetector, MirrorDetector
 from edgebench.patterns.inside import InsideDetector
 from edgebench.patterns.rejection import RejectionDetector
 from edgebench.patterns.stall import StallDetector
@@ -28,6 +28,8 @@ class PatternSet:
             self._detectors.append(InsideDetector(cfg.inside))
         if cfg.baseline.enabled:
             self._detectors.append(BaselineDetector(cfg.baseline))
+            if cfg.baseline.mirror:
+                self._detectors.append(MirrorDetector(cfg.baseline))
 
     @property
     def names(self) -> list[str]:
@@ -47,6 +49,7 @@ class PatternSet:
 __all__ = [
     "BaselineDetector",
     "InsideDetector",
+    "MirrorDetector",
     "PatternContext",
     "PatternDetector",
     "PatternSet",
